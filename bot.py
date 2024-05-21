@@ -3,7 +3,7 @@ import telebot
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 from config import BOT_TOKEN, LINK_TO_BOT, SHORT_RULES, FULL_RULES, COMMANDS, MIN_PLAYERS
 
-from database import add_user, add_group, is_group_playing, add_user_to_games, is_user_playing, get_group_current_session, change_group_state, check_user_exists
+from database import add_user, add_group, is_group_playing, add_user_to_games, is_user_playing, get_group_current_session, change_group_state, check_user_exists, increase_session
 
 import threading
 
@@ -102,6 +102,7 @@ def start_game_handler(message):
     else:
         change_group_state(message.chat.id, 1)
         session = get_group_current_session(message.chat.id)
+        increase_session(message.chat.id)
         bot.send_message(message.chat.id, "Началась подготовка к игре!")
         markup = InlineKeyboardMarkup()
         play_button = InlineKeyboardButton("Готов!", callback_data="ready")
