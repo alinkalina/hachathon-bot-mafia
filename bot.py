@@ -10,7 +10,6 @@ bot = telebot.TeleBot(token=BOT_TOKEN)
 
 @bot.message_handler(commands=["start"], chat_types=["supergroup"])
 def handle_group_start(message):
-    print(message.chat.id)
     # создаем кнопку для перехода в чат с ботом
     return_to_private_btn = InlineKeyboardButton(text="Чат с ботом", url=LINK_TO_BOT)
     keyboard = InlineKeyboardMarkup().add(return_to_private_btn)
