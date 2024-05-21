@@ -92,10 +92,8 @@ def update_roles():
         try:
             sql = f'INSERT INTO roles (name) VALUES ("{role}");'
             cursor.execute(sql)
-
         except sqlite3.IntegrityError:
             pass
-
         finally:
             connection.commit()
             cursor.close()
@@ -108,10 +106,8 @@ def add_user(chat_id: int):
     sql = f'INSERT INTO users (chat_id) VALUES ({chat_id});'
     try:
         cursor.execute(sql)
-
     except sqlite3.IntegrityError:
         pass
-
     finally:
         connection.commit()
         cursor.close()
@@ -130,13 +126,10 @@ def check_user_exists(chat_id: int) -> bool:
 def add_group(group_chat_id: int):
     connection, cursor = open_db()
     sql = f'INSERT INTO groups (group_chat_id) VALUES ({group_chat_id});'
-
     try:
         cursor.execute(sql)
-
     except sqlite3.IntegrityError:
         pass
-
     finally:
         connection.commit()
         cursor.close()
@@ -178,7 +171,8 @@ def get_one_by_other(param_1: str, param_2: str, value: int, table_name: str) ->
 
 
 # возвращает True, если юзер сейчас играет, False - если нет
-def is_user_playing(user_id: int) -> bool:
+def is_user_playing(chat_id: int) -> bool:
+    user_id = get_one_by_other('id', 'chat_id', chat_id, table_name='users')
     sql = f'SELECT group_id, session FROM games WHERE user_id = {user_id} ORDER BY id DESC LIMIT 1;'
     result = get_from_db(sql)
     if not result:
@@ -206,6 +200,21 @@ def count_session_users(group_chat_id: int) -> int:
     sql = f'SELECT COUNT(*) FROM games WHERE group_id = {group_id} and session = {current_session};'
     result = get_from_db(sql)
     return result[0][0]
+
+
+# возвращает group_chat_id группы, в которой пользователь сейчас играет, если такая существует, если нет, то False
+def get_user_current_group_chat_id(chat_id: int) -> int | bool:
+    user_id = get_one_by_other('id', 'chat_id', chat_id, table_name='users')
+    sql = f'SELECT group_id, session FROM games WHERE user_id = {user_id} ORDER BY id DESC LIMIT 1;'
+    result = get_from_db(sql)
+    if not result:
+        return False
+    print(result)
+    group_id, session = result[0]
+    group_chat_id = get_one_by_other('group_chat_id', 'id', group_id, table_name='groups')
+    if is_group_playing(group_chat_id) and get_group_current_session(group_chat_id) == session:
+        return group_chat_id
+    return False
 
 
 create_tables()

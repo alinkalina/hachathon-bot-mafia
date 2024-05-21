@@ -4,7 +4,8 @@ from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 from config import BOT_TOKEN, LINK_TO_BOT, SHORT_RULES, FULL_RULES, COMMANDS, MIN_PLAYERS
 
 from database import (add_user, add_group, is_group_playing, add_user_to_games, is_user_playing,
-                      change_group_state, check_user_exists, increase_session, count_session_users)
+                      change_group_state, check_user_exists, increase_session, count_session_users,
+                      get_user_current_group_chat_id)
 
 import threading
 
@@ -13,6 +14,8 @@ bot = telebot.TeleBot(token=BOT_TOKEN)
 
 @bot.message_handler(commands=["start"], chat_types=["supergroup"])
 def handle_group_start(message):
+    add_group(message.chat.id)
+
     # создаем кнопку для перехода в чат с ботом
     return_to_private_btn = InlineKeyboardButton(text="Чат с ботом", url=LINK_TO_BOT)
     keyboard = InlineKeyboardMarkup().add(return_to_private_btn)
@@ -23,13 +26,13 @@ def handle_group_start(message):
 
     full_text = text + "<b>Правила:</b>\n" + SHORT_RULES  # добавляем краткие правила к приветственному сообщению
 
-    add_group(message.chat.id)
-
     bot.send_message(message.chat.id, full_text, reply_markup=keyboard, parse_mode="html")
 
 
 @bot.message_handler(commands=["start"], chat_types=["private"])
 def handle_private_start(message):
+    add_user(message.chat.id)
+
     user_id = message.from_user.id
     link_to_group = get_group_link(user_id)
 
@@ -46,12 +49,9 @@ def handle_private_start(message):
     else:
         bot.send_message(message.chat.id, text)
 
-    add_user(message.chat.id)
-
 
 def get_group_link(user_id):
-    # group_id = get_group_id(user_id) TODO функция получения айди группы еще не готова
-    group_id = ""  # Временный вариант (убрать, когда функция выше будет готова)
+    group_id = get_user_current_group_chat_id(user_id)
 
     if group_id:
         link_to_group = bot.export_chat_invite_link(chat_id=group_id)  # Создаем ссылку для группы
@@ -72,7 +72,9 @@ def ready_handler(call):
     if not check_user_exists(user_id):
         return_to_private_btn = InlineKeyboardButton(text="Чат с ботом", url=LINK_TO_BOT)
         keyboard = InlineKeyboardMarkup().add(return_to_private_btn)
-        bot.send_message(call.message.chat.id, "Пожалуйста, напишите /start в чате со мной.", reply_markup=keyboard)
+        bot.send_message(call.message.chat.id, f"{call.from_user.username}, "
+                                               f"пожалуйста, напишите /start в чате со мной.",
+                         reply_markup=keyboard)
 
     elif is_user_playing(user_id):
         bot.answer_callback_query(call.id, "Вы уже присоединились к игре")
@@ -84,7 +86,7 @@ def ready_handler(call):
 
 
 # функция таймера для начала игры
-def start_game_timer(message, delay=60):
+def start_game_timer(message, delay=30):
     def timer_func():
         joined_players = count_session_users(message.chat.id)
 
@@ -92,7 +94,6 @@ def start_game_timer(message, delay=60):
             bot.send_message(message.chat.id, "Недостаточно игроков для начала игры! Начните набор заново!")
 
             change_group_state(message.chat.id, 0)
-            return
 
         else:
             # TODO добавить функцию начала игры
