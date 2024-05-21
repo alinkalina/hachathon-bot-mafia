@@ -97,6 +97,7 @@ def update_roles():
             pass
 
         finally:
+            connection.commit()
             cursor.close()
             connection.close()
 
@@ -112,6 +113,7 @@ def add_user(chat_id: int):
         pass
 
     finally:
+        connection.commit()
         cursor.close()
         connection.close()
 
@@ -136,6 +138,7 @@ def add_group(group_chat_id: int):
         pass
 
     finally:
+        connection.commit()
         cursor.close()
         connection.close()
 
@@ -144,7 +147,7 @@ def add_group(group_chat_id: int):
 def is_group_playing(group_chat_id: int) -> bool:
     sql = f'SELECT is_playing FROM groups WHERE group_chat_id = {group_chat_id};'
     result = get_from_db(sql)
-    return bool(result[0][0])
+    return bool(result)
 
 
 # возвращает текущее кол-во сессий группы
