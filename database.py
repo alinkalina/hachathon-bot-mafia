@@ -3,7 +3,7 @@ from config import ROLES
 
 
 def open_db():
-    con = sqlite3.connect('db.sqlite', check_same_thread=False)
+    con = sqlite3.connect('sqlite.db', check_same_thread=False)
     cur = con.cursor()
     return con, cur
 
@@ -94,6 +94,9 @@ def update_roles():
             cursor.execute(sql)
 
         except sqlite3.IntegrityError:
+            pass
+
+        finally:
             cursor.close()
             connection.close()
 
@@ -104,7 +107,11 @@ def add_user(chat_id: int):
     sql = f'INSERT INTO users (chat_id) VALUES ({chat_id});'
     try:
         cursor.execute(sql)
+
     except sqlite3.IntegrityError:
+        pass
+
+    finally:
         cursor.close()
         connection.close()
 
@@ -124,7 +131,11 @@ def add_group(group_chat_id: int):
     sql = f'INSERT INTO groups (group_chat_id) VALUES ({group_chat_id});'
     try:
         cursor.execute(sql)
+
     except sqlite3.IntegrityError:
+        pass
+
+    finally:
         cursor.close()
         connection.close()
 
