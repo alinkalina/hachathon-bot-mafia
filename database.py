@@ -104,6 +104,15 @@ def add_user(chat_id: int):
         pass
 
 
+# возвращает False, если юзера нет в users => он должен написать старт боту в личке
+# True - если юзер записан
+# TODO использовать при нажатии юзера на кнопку `играть`
+def check_user_exists(chat_id: int) -> bool:
+    sql = f'SELECT id FROM users WHERE chat_id = {chat_id};'
+    result = get_from_db(sql)
+    return bool(result)
+
+
 # добавляет новую группу в таблицу groups если её там ещё нет
 def add_group(group_chat_id: int):
     sql = f'INSERT INTO groups (group_chat_id) VALUES ({group_chat_id});'
