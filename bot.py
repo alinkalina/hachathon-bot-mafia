@@ -75,7 +75,7 @@ def ready_handler(call):
         bot.send_message(call.message.chat.id, "Пожалуйста, напишите /start в чате со мной.", reply_markup=keyboard)
 
     elif is_user_playing(user_id):
-        bot.answer_callback_query(call.id, "Вы уже нажали на кнопку!")
+        bot.answer_callback_query(call.id, "Вы уже присоединились к игре")
 
     else:
         add_user_to_games(call.message.chat.id, user_id)
@@ -86,7 +86,6 @@ def ready_handler(call):
 # функция таймера для начала игры
 def start_game_timer(message, delay=60):
     def timer_func():
-        # TODO сделать функцию get_joined_players
         joined_players = count_session_users(message.chat.id)
 
         if joined_players < MIN_PLAYERS:
