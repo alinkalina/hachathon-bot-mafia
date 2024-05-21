@@ -151,10 +151,20 @@ def is_user_playing(user_id: int) -> bool:
     if not result:
         return False
     group_id, session = result[0]
-    group_chat_id = get_one_by_other('group_chat_id', 'id', group_id, 'groups')
+    group_chat_id = get_one_by_other('group_chat_id', 'id', group_id, table_name='groups')
     if is_group_playing(group_chat_id) and get_group_current_session(group_chat_id) == session:
         return True
     return False
+
+
+# добавляет пользователя в таблицу games
+# TODO использовать при успешной проверке, что юзер может сейчас играть после его согласия нажатием на `буду играть`
+def start_game_for_user(group_chat_id: int, user_chat_id: int):
+    group_id = get_one_by_other('id', 'group_chat_id', group_chat_id, table_name='groups')
+    user_id = get_one_by_other('id', 'chat_id', user_chat_id, table_name='users')
+    session = get_group_current_session(group_chat_id)
+    sql = f'INSERT INTO games (group_id, session, user_id) VALUES ({group_id}, {session}, {user_id});'
+    change_db(sql)
 
 
 create_tables()
