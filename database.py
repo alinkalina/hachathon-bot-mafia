@@ -118,7 +118,6 @@ def add_user(chat_id: int):
 
 # возвращает False, если юзера нет в users => он должен написать старт боту в личке
 # True - если юзер записан
-# TODO использовать при нажатии юзера на кнопку `играть`
 def check_user_exists(chat_id: int) -> bool:
     sql = f'SELECT id FROM users WHERE chat_id = {chat_id};'
     result = get_from_db(sql)
@@ -129,6 +128,7 @@ def check_user_exists(chat_id: int) -> bool:
 def add_group(group_chat_id: int):
     connection, cursor = open_db()
     sql = f'INSERT INTO groups (group_chat_id) VALUES ({group_chat_id});'
+
     try:
         cursor.execute(sql)
 
@@ -141,7 +141,6 @@ def add_group(group_chat_id: int):
 
 
 # возвращает True, если группа сейчас играет, False - если нет
-# TODO использовать для проверки при запуске команды start_game в группе, не играет ли группа уже
 def is_group_playing(group_chat_id: int) -> bool:
     sql = f'SELECT is_playing FROM groups WHERE group_chat_id = {group_chat_id};'
     result = get_from_db(sql)
@@ -156,14 +155,12 @@ def get_group_current_session(group_chat_id: int) -> int:
 
 
 # переводит статус группы is_playing в нужный, state = 0 - не играет, 1 - играет
-# TODO использовать функцию сразу при запуске команды start_game в группе (для `включения` игры)
 def change_group_state(group_chat_id: int, state: int):
     sql = f'UPDATE groups SET is_playing = {state} WHERE group_chat_id = {group_chat_id};'
     change_db(sql)
 
 
 # увеличивает сессию на 1
-# TODO использовать функцию сразу при запуске команды start_game в группе
 def increase_session(group_chat_id: int):
     current_session = get_group_current_session(group_chat_id)
     sql = f'UPDATE groups SET session = {current_session + 1} WHERE group_chat_id = {group_chat_id};'
@@ -178,7 +175,6 @@ def get_one_by_other(param_1: str, param_2: str, value: int, table_name: str) ->
 
 
 # возвращает True, если юзер сейчас играет, False - если нет
-# TODO использовать для проверки, не играет ли сейчас юзер, когда он нажимает на кнопку `буду играть`
 def is_user_playing(user_id: int) -> bool:
     sql = f'SELECT group_id, session FROM games WHERE user_id = {user_id} ORDER BY id DESC LIMIT 1;'
     result = get_from_db(sql)
@@ -192,7 +188,6 @@ def is_user_playing(user_id: int) -> bool:
 
 
 # добавляет пользователя в таблицу games
-# TODO использовать при успешной проверке, что юзер может сейчас играть после его согласия нажатием на `буду играть`
 def add_user_to_games(group_chat_id: int, user_chat_id: int):
     group_id = get_one_by_other('id', 'group_chat_id', group_chat_id, table_name='groups')
     user_id = get_one_by_other('id', 'chat_id', user_chat_id, table_name='users')
