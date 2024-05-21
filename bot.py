@@ -3,7 +3,7 @@ import telebot
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 from config import BOT_TOKEN, LINK_TO_BOT, SHORT_RULES, FULL_RULES, COMMANDS
 
-from database import add_user
+from database import add_user, add_group
 
 bot = telebot.TeleBot(token=BOT_TOKEN)
 
@@ -22,7 +22,7 @@ def handle_group_start(message):
 
     bot.send_message(message.chat.id, full_text, reply_markup=keyboard, parse_mode="html")
 
-    # add_group() TODO функция добавления группы в БД ещё не готова
+    add_group(message.chat.id)
 
 
 @bot.message_handler(commands=["start"], chat_types=["private"])

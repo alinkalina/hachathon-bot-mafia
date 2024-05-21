@@ -104,5 +104,14 @@ def add_user(chat_id: int):
         pass
 
 
+# добавляет новую группу в таблицу groups если её там ещё нет
+def add_group(group_chat_id: int):
+    sql = f'INSERT INTO groups (group_chat_id) VALUES ({group_chat_id});'
+    try:
+        change_db(sql)
+    except sqlite3.IntegrityError:
+        pass
+
+
 create_tables()
 update_roles()
