@@ -91,12 +91,15 @@ def start_game_timer(message, delay=60):
         joined_players = 0
 
         if joined_players < MIN_PLAYERS:
-            bot.send_message(message.chat.id, "Недостаточно игроков для начала игры!")
+            bot.send_message(message.chat.id, "Недостаточно игроков для начала игры! Начните набор заново!")
+
+            change_group_state(message.chat.id, 0)
             return
 
         else:
             # TODO добавить функцию начала игры
             pass
+
         bot.delete_message(message.chat.id, message.message_id)
 
     threading.Timer(delay, timer_func).start()
@@ -118,6 +121,7 @@ def start_game_handler(message):
         markup = InlineKeyboardMarkup()
         play_button = InlineKeyboardButton("Готов!", callback_data="ready")
         markup.add(play_button)
+
         sent_message = bot.send_message(message.chat.id, "Нажмите на кнопку, когда будете готовы!", reply_markup=markup)
         start_game_timer(sent_message)
 
