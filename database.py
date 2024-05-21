@@ -67,7 +67,7 @@ def create_tables():
 
 
 # эта функция должна использоваться только в этом файле для запросов UPDATE, INSERT и DELETE
-def change_db(sql):
+def change_db(sql: str):
     connection, cursor = open_db()
     cursor.execute(sql)
     cursor.close()
@@ -111,6 +111,28 @@ def add_group(group_chat_id: int):
         change_db(sql)
     except sqlite3.IntegrityError:
         pass
+
+
+# возвращает True, если группа сейчас играет, False - если нет
+def is_group_playing(group_chat_id: int) -> bool:
+    sql = f'SELECT is_playing FROM groups WHERE group_chat_id = {group_chat_id};'
+    result = get_from_db(sql)
+    return bool(result[0][0])
+
+
+# возвращает текущее кол-во сессий группы
+def get_group_current_session(group_chat_id: int) -> int:
+    sql = f'SELECT session FROM groups WHERE group_chat_id = {group_chat_id};'
+    result = get_from_db(sql)
+    return result[0][0]
+
+
+# переводит статус группы в is_playing (играет) и увеличивает сессию на 1
+# TODO использовать функцию сразу при запуске команды start_game в группе
+def start_game_for_group(group_chat_id: int):
+    current_session = get_group_current_session(group_chat_id)
+    sql = f'UPDATE groups SET is_playing = 1, session = {current_session + 1} WHERE group_chat_id = {group_chat_id};'
+    change_db(sql)
 
 
 create_tables()
