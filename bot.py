@@ -1,9 +1,11 @@
 import telebot
 
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
-from config import BOT_TOKEN, LINK_TO_BOT, SHORT_RULES, FULL_RULES, COMMANDS
+from config import BOT_TOKEN, LINK_TO_BOT, SHORT_RULES, FULL_RULES, COMMANDS, MIN_PLAYERS
 
-from database import add_user, add_group
+from database import add_user, add_group, is_group_playing, add_user_to_games, is_user_playing, get_group_current_session, start_game_for_group, check
+
+import threading
 
 bot = telebot.TeleBot(token=BOT_TOKEN)
 
@@ -59,6 +61,54 @@ def get_group_link(user_id):
 @bot.message_handler(commands=["rules"], chat_types=["private"])
 def send_rules(message):
     bot.send_message(message.chat.id, FULL_RULES)
+
+
+# обработка нажатия на кнопку "Готов!"
+@bot.callback_query_handler(func=lambda call: call.data == "ready")
+def ready_handler(call):
+    user_id = call.from_user.id
+    # TODO здесь проверки пользователя на нахождение в базе
+    if not check_user_exist(user_id):
+        return_to_private_btn = InlineKeyboardButton(text="Чат с ботом", url=LINK_TO_BOT)
+        keyboard = InlineKeyboardMarkup().add(return_to_private_btn)
+        bot.send_message(call.message.chat.id, "Пожалуйста, напишите /start в чате со мной.", reply_markup=keyboard)
+    elif is_user_playing(user_id):
+        bot.answer_callback_query(call.id, "Вы уже нажали на кнопку!")
+    else:
+        add_user_to_games(user_id)
+        bot.send_message(call.message.chat.id, f"Пользователь {call.from_user.username} готов к игре!")
+
+
+# функция таймера для начала игры
+def start_game_timer(message, delay=60):
+    def timer_func():
+        # TODO сделать функцию get_joined_players
+        joined_players = get_joined_players(message.chat.id)
+        if joined_players < MIN_PLAYERS:
+            bot.send_message(message.chat.id, "Недостаточно игроков для начала игры!")
+            return
+        else:
+            # TODO добавить функцию начала игры
+            pass
+        bot.delete_message(message.chat.id, message.message_id)
+
+    threading.Timer(delay, timer_func).start()
+
+
+# функция начала игры
+@bot.message_handler(commands=["start_game"], chat_types=["supergroup"]
+def start_game_handler(message):
+    if is_group_playing(message.chat.id):
+        bot.send_message(message.chat.id, "Игра уже начата!")
+    else:
+        start_game_for_group(message.chat.id)
+        session = get_group_current_session(message.chat.id)
+        bot.send_message(message.chat.id, "Началась подготовка к игре!")
+        markup = InlineKeyboardMarkup()
+        play_button = InlineKeyboardButton("Готов!", callback_data="ready")
+        markup.add(play_button)
+        sent_message = bot.send_message(message.chat.id, "Нажмите на кнопку, когда будете готовы!", reply_markup=markup)
+        start_game_timer(sent_message)
 
 
 if __name__ == "__main__":
