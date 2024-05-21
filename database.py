@@ -114,6 +114,7 @@ def add_group(group_chat_id: int):
 
 
 # возвращает True, если группа сейчас играет, False - если нет
+# TODO использовать для проверки при запуске команды start_game в группе, не играет ли группа уже
 def is_group_playing(group_chat_id: int) -> bool:
     sql = f'SELECT is_playing FROM groups WHERE group_chat_id = {group_chat_id};'
     result = get_from_db(sql)
@@ -133,6 +134,27 @@ def start_game_for_group(group_chat_id: int):
     current_session = get_group_current_session(group_chat_id)
     sql = f'UPDATE groups SET is_playing = 1, session = {current_session + 1} WHERE group_chat_id = {group_chat_id};'
     change_db(sql)
+
+
+# должна использоваться только в этом файле
+def get_one_by_other(param_1: str, param_2: str, value: int, table_name: str) -> int:
+    sql = f'SELECT {param_1} FROM {table_name} WHERE {param_2} = {value};'
+    result = get_from_db(sql)
+    return int(result[0][0])
+
+
+# возвращает True, если юзер сейчас играет, False - если нет
+# TODO использовать для проверки, не играет ли сейчас юзер, когда он нажимает на кнопку `буду играть`
+def is_user_playing(user_id: int) -> bool:
+    sql = f'SELECT group_id, session FROM games WHERE user_id = {user_id} ORDER BY id DESC LIMIT 1;'
+    result = get_from_db(sql)
+    if not result:
+        return False
+    group_id, session = result[0]
+    group_chat_id = get_one_by_other('group_chat_id', 'id', group_id, 'groups')
+    if is_group_playing(group_chat_id) and get_group_current_session(group_chat_id) == session:
+        return True
+    return False
 
 
 create_tables()
