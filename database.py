@@ -147,7 +147,7 @@ def add_group(group_chat_id: int):
 def is_group_playing(group_chat_id: int) -> bool:
     sql = f'SELECT is_playing FROM groups WHERE group_chat_id = {group_chat_id};'
     result = get_from_db(sql)
-    return bool(result)
+    return bool(result[0][0])
 
 
 # возвращает текущее кол-во сессий группы
@@ -197,6 +197,15 @@ def add_user_to_games(group_chat_id: int, user_chat_id: int):
     session = get_group_current_session(group_chat_id)
     sql = f'INSERT INTO games (group_id, session, user_id) VALUES ({group_id}, {session}, {user_id});'
     change_db(sql)
+
+
+# подсчитывает кол-во присоединившихся к игре пользователей
+def count_session_users(group_chat_id: int) -> int:
+    current_session = get_group_current_session(group_chat_id)
+    group_id = get_one_by_other('id', 'group_chat_id', group_chat_id, table_name='groups')
+    sql = f'SELECT COUNT(*) FROM games WHERE group_id = {group_id} and session = {current_session};'
+    result = get_from_db(sql)
+    return result[0][0]
 
 
 create_tables()
