@@ -88,20 +88,25 @@ def get_from_db(sql: str) -> list[tuple]:
 # функция вызывается каждый раз при запуске проекта и добавляет в БД новые роли, если они появились
 def update_roles():
     for role in ROLES:
+        connection, cursor = open_db()
         try:
             sql = f'INSERT INTO roles (name) VALUES ("{role}");'
-            change_db(sql)
+            cursor.execute(sql)
+
         except sqlite3.IntegrityError:
-            pass
+            cursor.close()
+            connection.close()
 
 
 # добавляет нового пользователя в таблицу users если его там ещё нет
 def add_user(chat_id: int):
+    connection, cursor = open_db()
     sql = f'INSERT INTO users (chat_id) VALUES ({chat_id});'
     try:
-        change_db(sql)
+        cursor.execute(sql)
     except sqlite3.IntegrityError:
-        pass
+        cursor.close()
+        connection.close()
 
 
 # возвращает False, если юзера нет в users => он должен написать старт боту в личке
@@ -115,11 +120,13 @@ def check_user_exists(chat_id: int) -> bool:
 
 # добавляет новую группу в таблицу groups если её там ещё нет
 def add_group(group_chat_id: int):
+    connection, cursor = open_db()
     sql = f'INSERT INTO groups (group_chat_id) VALUES ({group_chat_id});'
     try:
-        change_db(sql)
+        cursor.execute(sql)
     except sqlite3.IntegrityError:
-        pass
+        cursor.close()
+        connection.close()
 
 
 # возвращает True, если группа сейчас играет, False - если нет
