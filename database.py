@@ -1,4 +1,5 @@
 import sqlite3
+from config import ROLES
 
 
 def open_db():
@@ -65,4 +66,43 @@ def create_tables():
     connection.close()
 
 
+# эта функция должна использоваться только в этом файле для запросов UPDATE, INSERT и DELETE
+def change_db(sql):
+    connection, cursor = open_db()
+    cursor.execute(sql)
+    cursor.close()
+    connection.commit()
+    connection.close()
+
+
+# эта функция должна использоваться только в этом файле для запросов SELECT
+def get_from_db(sql: str) -> list[tuple]:
+    connection, cursor = open_db()
+    cursor.execute(sql)
+    result = cursor.fetchall()
+    cursor.close()
+    connection.close()
+    return result
+
+
+# функция вызывается каждый раз при запуске проекта и добавляет в БД новые роли, если они появились
+def update_roles():
+    for role in ROLES:
+        try:
+            sql = f'INSERT INTO roles (name) VALUES ("{role}");'
+            change_db(sql)
+        except sqlite3.IntegrityError:
+            pass
+
+
+# добавляет нового пользователя в таблицу users если его там ещё нет
+def add_user(chat_id: int):
+    sql = f'INSERT INTO users (chat_id) VALUES ({chat_id});'
+    try:
+        change_db(sql)
+    except sqlite3.IntegrityError:
+        pass
+
+
 create_tables()
+update_roles()

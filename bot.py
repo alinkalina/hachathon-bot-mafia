@@ -3,6 +3,8 @@ import telebot
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 from config import BOT_TOKEN, LINK_TO_BOT, SHORT_RULES, FULL_RULES, COMMANDS
 
+from database import add_user
+
 bot = telebot.TeleBot(token=BOT_TOKEN)
 
 
@@ -20,6 +22,8 @@ def handle_group_start(message):
     full_text = text + "<b>Правила:</b>\n" + SHORT_RULES  # добавляем краткие правила к приветственному сообщению
 
     bot.send_message(message.chat.id, full_text, reply_markup=keyboard, parse_mode="html")
+
+    # add_group() TODO функция добавления группы в БД ещё не готова
 
 
 @bot.message_handler(commands=["start"], chat_types=["private"])
@@ -40,7 +44,7 @@ def handle_private_start(message):
     else:
         bot.send_message(message.chat.id, text)
 
-    # add_user() TODO функция добавления пользователя в БД еще не готова
+    add_user(message.chat.id)
 
 
 def get_group_link(user_id):
