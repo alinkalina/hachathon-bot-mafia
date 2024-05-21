@@ -23,9 +23,9 @@ def handle_group_start(message):
 
     full_text = text + "<b>Правила:</b>\n" + SHORT_RULES  # добавляем краткие правила к приветственному сообщению
 
-    bot.send_message(message.chat.id, full_text, reply_markup=keyboard, parse_mode="html")
-
     add_group(message.chat.id)
+
+    bot.send_message(message.chat.id, full_text, reply_markup=keyboard, parse_mode="html")
 
 
 @bot.message_handler(commands=["start"], chat_types=["private"])
@@ -108,21 +108,25 @@ def start_game_timer(message, delay=60):
 # функция начала игры
 @bot.message_handler(commands=["start_game"], chat_types=["supergroup"])
 def start_game_handler(message):
-    if is_group_playing(message.chat.id):
-        bot.send_message(message.chat.id, "Игра уже начата!")
+    c_id = message.chat.id
+
+    add_group(c_id)
+
+    if is_group_playing(c_id):
+        bot.send_message(c_id, "Игра уже начата!")
 
     else:
-        change_group_state(message.chat.id, 1)
+        change_group_state(c_id, 1)
 
-        increase_session(message.chat.id)
+        increase_session(c_id)
 
-        bot.send_message(message.chat.id, "Началась подготовка к игре!")
+        bot.send_message(c_id, "Началась подготовка к игре!")
 
         markup = InlineKeyboardMarkup()
         play_button = InlineKeyboardButton("Готов!", callback_data="ready")
         markup.add(play_button)
 
-        sent_message = bot.send_message(message.chat.id, "Нажмите на кнопку, когда будете готовы!", reply_markup=markup)
+        sent_message = bot.send_message(c_id, "Нажмите на кнопку, когда будете готовы!", reply_markup=markup)
         start_game_timer(sent_message)
 
 
