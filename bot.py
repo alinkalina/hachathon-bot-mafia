@@ -3,7 +3,7 @@ import telebot
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 from config import BOT_TOKEN, LINK_TO_BOT, SHORT_RULES, FULL_RULES, COMMANDS, MIN_PLAYERS
 
-from database import add_user, add_group, is_group_playing, add_user_to_games, is_user_playing, get_group_current_session, start_game_for_group, check
+from database import add_user, add_group, is_group_playing, add_user_to_games, is_user_playing, get_group_current_session, change_group_state, check_user_exists
 
 import threading
 
@@ -67,8 +67,7 @@ def send_rules(message):
 @bot.callback_query_handler(func=lambda call: call.data == "ready")
 def ready_handler(call):
     user_id = call.from_user.id
-    # TODO здесь проверки пользователя на нахождение в базе
-    if not check_user_exist(user_id):
+    if not check_user_exists(user_id):
         return_to_private_btn = InlineKeyboardButton(text="Чат с ботом", url=LINK_TO_BOT)
         keyboard = InlineKeyboardMarkup().add(return_to_private_btn)
         bot.send_message(call.message.chat.id, "Пожалуйста, напишите /start в чате со мной.", reply_markup=keyboard)
@@ -101,7 +100,7 @@ def start_game_handler(message):
     if is_group_playing(message.chat.id):
         bot.send_message(message.chat.id, "Игра уже начата!")
     else:
-        start_game_for_group(message.chat.id)
+        change_group_state(message.chat.id, 1)
         session = get_group_current_session(message.chat.id)
         bot.send_message(message.chat.id, "Началась подготовка к игре!")
         markup = InlineKeyboardMarkup()
