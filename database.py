@@ -104,6 +104,15 @@ def add_user(chat_id: int):
         pass
 
 
+# возвращает False, если юзера нет в users => он должен написать старт боту в личке
+# True - если юзер записан
+# TODO использовать при нажатии юзера на кнопку `играть`
+def check_user_exists(chat_id: int) -> bool:
+    sql = f'SELECT id FROM users WHERE chat_id = {chat_id};'
+    result = get_from_db(sql)
+    return bool(result)
+
+
 # добавляет новую группу в таблицу groups если её там ещё нет
 def add_group(group_chat_id: int):
     sql = f'INSERT INTO groups (group_chat_id) VALUES ({group_chat_id});'
@@ -128,11 +137,18 @@ def get_group_current_session(group_chat_id: int) -> int:
     return result[0][0]
 
 
-# переводит статус группы в is_playing (играет) и увеличивает сессию на 1
+# переводит статус группы is_playing в нужный, state = 0 - не играет, 1 - играет
+# TODO использовать функцию сразу при запуске команды start_game в группе (для `включения` игры)
+def change_group_state(group_chat_id: int, state: int):
+    sql = f'UPDATE groups SET is_playing = {state} WHERE group_chat_id = {group_chat_id};'
+    change_db(sql)
+
+
+# увеличивает сессию на 1
 # TODO использовать функцию сразу при запуске команды start_game в группе
-def start_game_for_group(group_chat_id: int):
+def increase_session(group_chat_id: int):
     current_session = get_group_current_session(group_chat_id)
-    sql = f'UPDATE groups SET is_playing = 1, session = {current_session + 1} WHERE group_chat_id = {group_chat_id};'
+    sql = f'UPDATE groups SET session = {current_session + 1} WHERE group_chat_id = {group_chat_id};'
     change_db(sql)
 
 
