@@ -159,7 +159,7 @@ def is_user_playing(user_id: int) -> bool:
 
 # добавляет пользователя в таблицу games
 # TODO использовать при успешной проверке, что юзер может сейчас играть после его согласия нажатием на `буду играть`
-def start_game_for_user(group_chat_id: int, user_chat_id: int):
+def add_user_to_games(group_chat_id: int, user_chat_id: int):
     group_id = get_one_by_other('id', 'group_chat_id', group_chat_id, table_name='groups')
     user_id = get_one_by_other('id', 'chat_id', user_chat_id, table_name='users')
     session = get_group_current_session(group_chat_id)
