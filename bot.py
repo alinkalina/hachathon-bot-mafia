@@ -101,7 +101,6 @@ def start_game_handler(message):
         bot.send_message(message.chat.id, "Игра уже начата!")
     else:
         change_group_state(message.chat.id, 1)
-        get_group_current_session(message.chat.id)
         increase_session(message.chat.id)
         bot.send_message(message.chat.id, "Началась подготовка к игре!")
         markup = InlineKeyboardMarkup()
