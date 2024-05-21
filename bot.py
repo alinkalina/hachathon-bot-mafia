@@ -3,7 +3,8 @@ import telebot
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 from config import BOT_TOKEN, LINK_TO_BOT, SHORT_RULES, FULL_RULES, COMMANDS, MIN_PLAYERS
 
-from database import add_user, add_group, is_group_playing, add_user_to_games, is_user_playing, get_group_current_session, change_group_state, check_user_exists, increase_session
+from database import (add_user, add_group, is_group_playing, add_user_to_games, is_user_playing,
+                      change_group_state, check_user_exists, increase_session)
 
 import threading
 
@@ -67,14 +68,18 @@ def send_rules(message):
 @bot.callback_query_handler(func=lambda call: call.data == "ready")
 def ready_handler(call):
     user_id = call.from_user.id
+
     if not check_user_exists(user_id):
         return_to_private_btn = InlineKeyboardButton(text="Чат с ботом", url=LINK_TO_BOT)
         keyboard = InlineKeyboardMarkup().add(return_to_private_btn)
         bot.send_message(call.message.chat.id, "Пожалуйста, напишите /start в чате со мной.", reply_markup=keyboard)
+
     elif is_user_playing(user_id):
         bot.answer_callback_query(call.id, "Вы уже нажали на кнопку!")
+
     else:
-        add_user_to_games(user_id)
+        add_user_to_games(call.message.chat.id, user_id)
+
         bot.send_message(call.message.chat.id, f"Пользователь {call.from_user.username} готов к игре!")
 
 
@@ -82,7 +87,8 @@ def ready_handler(call):
 def start_game_timer(message, delay=60):
     def timer_func():
         # TODO сделать функцию get_joined_players
-        joined_players = get_joined_players(message.chat.id)
+        # joined_players = get_joined_players(message.chat.id)
+        joined_players = 0
         if joined_players < MIN_PLAYERS:
             bot.send_message(message.chat.id, "Недостаточно игроков для начала игры!")
             return
@@ -95,14 +101,18 @@ def start_game_timer(message, delay=60):
 
 
 # функция начала игры
-@bot.message_handler(commands=["start_game"], chat_types=["supergroup"]
+@bot.message_handler(commands=["start_game"], chat_types=["supergroup"])
 def start_game_handler(message):
     if is_group_playing(message.chat.id):
         bot.send_message(message.chat.id, "Игра уже начата!")
+
     else:
         change_group_state(message.chat.id, 1)
+
         increase_session(message.chat.id)
+
         bot.send_message(message.chat.id, "Началась подготовка к игре!")
+
         markup = InlineKeyboardMarkup()
         play_button = InlineKeyboardButton("Готов!", callback_data="ready")
         markup.add(play_button)
