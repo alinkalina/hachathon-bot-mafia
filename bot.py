@@ -89,9 +89,11 @@ def start_game_timer(message, delay=60):
         # TODO сделать функцию get_joined_players
         # joined_players = get_joined_players(message.chat.id)
         joined_players = 0
+
         if joined_players < MIN_PLAYERS:
             bot.send_message(message.chat.id, "Недостаточно игроков для начала игры!")
             return
+
         else:
             # TODO добавить функцию начала игры
             pass
