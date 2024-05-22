@@ -5,7 +5,7 @@ from config import BOT_TOKEN, LINK_TO_BOT, SHORT_RULES, FULL_RULES, COMMANDS, MI
 
 from database import (add_user, add_group, is_group_playing, add_user_to_games, is_user_playing,
                       change_group_state, check_user_exists, increase_session, get_players_list,
-                      get_user_current_group_chat_id, update_user_data, get_user_data)
+                      get_user_current_group_chat_id, update_user_data, get_user_data, get_alive_users)
 
 import threading
 
@@ -234,8 +234,7 @@ def make_day_stage(message, killed_user_list: list):
 
         update_user_data(killed_user_id, message.chat.id, "killed", 1)
 
-    # alive_users_ids = get_alive_users() TODO Функция для получения списка из телеграм айди живых игроков
-    alive_user_ids = []  # временный вариант
+    alive_user_ids = get_alive_users(c_id)
     alive_user_names = []
 
     for user_id in alive_user_ids:
