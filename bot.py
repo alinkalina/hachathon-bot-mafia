@@ -215,6 +215,7 @@ def start_discussion_timer(message, alive_users, delay=180):
 
 def make_day_stage(message, killed_user_list: list):
     c_id = message.chat.id
+    # killed_user_list - список, который передается из ночной фазы по результатам голосования мафии
     is_user_killed = killed_user_list[0]
 
     if not is_user_killed:
