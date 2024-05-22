@@ -260,5 +260,17 @@ def transform_result(result: int, param: str) -> str | int:
     return result
 
 
+# список живых игроков
+# TODO использовать для дневного голосования
+def get_alive_users(group_chat_id: int) -> list[int]:
+    chat_ids = get_players_list(group_chat_id)
+    alive_users = []
+    for chat_id in chat_ids:
+        is_user_killed = get_user_data(chat_id, group_chat_id, 'killed')
+        if not is_user_killed:
+            alive_users.append(chat_id)
+    return alive_users
+
+
 create_tables()
 update_roles()
