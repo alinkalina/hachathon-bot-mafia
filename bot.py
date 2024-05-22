@@ -4,7 +4,7 @@ from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 from config import BOT_TOKEN, LINK_TO_BOT, SHORT_RULES, FULL_RULES, COMMANDS, MIN_PLAYERS
 
 from database import (add_user, add_group, is_group_playing, add_user_to_games, is_user_playing,
-                      change_group_state, check_user_exists, increase_session, count_session_users,
+                      change_group_state, check_user_exists, increase_session, get_session_users,
                       get_user_current_group_chat_id, update_user_data, get_user_data)
 
 import threading
@@ -89,7 +89,7 @@ def ready_handler(call):
 # функция таймера для начала игры
 def start_game_timer(message, delay=30):
     def timer_func():
-        joined_players = count_session_users(message.chat.id)
+        joined_players = len(get_session_users(message.chat.id))
 
         if joined_players < MIN_PLAYERS:
             bot.send_message(message.chat.id, "Недостаточно игроков для начала игры! Начните набор заново!")

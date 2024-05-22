@@ -196,15 +196,6 @@ def add_user_to_games(group_chat_id: int, user_chat_id: int):
     change_db(sql)
 
 
-# подсчитывает кол-во присоединившихся к игре пользователей
-def count_session_users(group_chat_id: int) -> int:
-    current_session = get_group_current_session(group_chat_id)
-    group_id = get_one_by_other('id', 'group_chat_id', group_chat_id, table_name='groups')
-    sql = f'SELECT COUNT(*) FROM games WHERE group_id = {group_id} and session = {current_session};'
-    result = get_from_db(sql)
-    return result[0][0]
-
-
 # возвращает group_chat_id группы, в которой пользователь сейчас играет, если такая существует, если нет, то False
 def get_user_current_group_chat_id(chat_id: int) -> int | bool:
     user_id = get_one_by_other('id', 'chat_id', chat_id, table_name='users')
