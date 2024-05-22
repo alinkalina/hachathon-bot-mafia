@@ -1,13 +1,15 @@
 import telebot
 
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
-from config import BOT_TOKEN, LINK_TO_BOT, SHORT_RULES, FULL_RULES, COMMANDS, MIN_PLAYERS
+from config import BOT_TOKEN, LINK_TO_BOT, SHORT_RULES, FULL_RULES, COMMANDS, MIN_PLAYERS, ROLES
 
 from database import (add_user, add_group, is_group_playing, add_user_to_games, is_user_playing,
                       change_group_state, check_user_exists, increase_session, get_players_list,
-                      get_user_current_group_chat_id, update_user_data, get_user_data)
+                      get_user_current_group_chat_id, update_user_data, get_user_data, get_group_current_session, get_alive_users)
 
 import threading
+
+import random
 
 bot = telebot.TeleBot(token=BOT_TOKEN)
 
@@ -86,6 +88,102 @@ def ready_handler(call):
         bot.send_message(call.message.chat.id, f"Пользователь {call.from_user.username} готов к игре!")
 
 
+# подсчет голосов мафии
+def count_mafia_votes(group_chat_id):
+    user_chat_ids = get_alive_users(group_chat_id)
+    mafia_chat_ids = [chat_id for chat_id in user_chat_ids if get_user_data(chat_id, group_chat_id, "role") == 2]
+
+    votes = {}
+
+    for mafia_chat_id in mafia_chat_ids:
+        choice = get_user_data(mafia_chat_id, group_chat_id, "choice")
+        if choice in votes:
+            votes[choice] = 1
+        else:
+            votes[choice] += 1
+
+    max_votes = max(votes.values())
+    killed_player = [player for player, votes in votes.items() if votes == max_votes]
+
+    if len(killed_player) > 1:
+        killed_player = None
+    else:
+        killed_player = killed_player[0]
+
+    return killed_player
+
+
+# функция ночного таймера
+def start_night_timer(group_chat_id, delay=30):
+    def end_night_stage():
+        killed_player = count_mafia_votes(group_chat_id)
+        if killed_player is not None:
+            update_user_data(killed_player, group_chat_id, "killed", 1)
+            bot.send_message(group_chat_id, f"Мафия убила игрока {bot.get_chat_member(group_chat_id, killed_player).user.username}")
+        else:
+            bot.send_message(group_chat_id, "Мафия не смогла договориться и никого не убила")
+
+    threading.Timer(delay, end_night_stage).start()
+
+
+# функция обработки нажатия на кнопку мафии
+@bot.callback_query_handler(func=lambda call: True)
+def procces_mafia_vote(call):
+    bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id, reply_markup=None)
+    user_chat_id = call.from_user.id
+    group_chat_id = get_user_current_group_chat_id(user_chat_id)
+
+    chosen_user_chat_id = int(call.data)
+    update_user_data(user_chat_id, group_chat_id, "choice", chosen_user_chat_id)
+    bot.answer_callback_query(call.id, f"Вы выбрали {bot.get_chat_member(group_chat_id, chosen_user_chat_id).user.username}")
+
+
+# функция ночной фазы
+def make_night_stage(group_chat_id):
+    user_chat_ids = get_alive_users(group_chat_id)
+    mafia_chat_ids = [chat_id for chat_id in user_chat_ids if get_user_data(chat_id, group_chat_id, "role") == 2]
+
+    bot.send_message(group_chat_id, "Наступила ночь! Мафия, просыпайтесь и выберите жертву!")
+
+    for mafia_chat_id in mafia_chat_ids:
+        markup = InlineKeyboardMarkup()
+        for user_chat_id in user_chat_ids:
+            if user_chat_id != mafia_chat_id:
+                btn = InlineKeyboardButton(text=bot.get_chat_member(group_chat_id, user_chat_id).user.username,
+                                           callback_data=user_chat_id)
+                markup.add(btn)
+        bot.send_message(mafia_chat_id, "Выберите жертву!", reply_markup=markup)
+
+    start_night_timer(group_chat_id)
+
+
+# функция назначения ролей для игры
+def assign_roles(group_chat_id):
+    user_chat_ids = get_players_list(group_chat_id)
+    num_players = len(user_chat_ids)
+    num_mafia = num_players // 3
+    num_citizens = num_players - num_mafia
+
+    roles = []
+    for role_index in range(len(ROLES)):
+        if ROLES[role_index] == "Мафия":
+            for i in range(num_mafia):
+                roles.append(role_index + 1)
+        #elif role == "Комиссар":
+         #   roles.append(role_index + 1)
+        else:
+            for i in range(num_citizens):
+                roles.append(role_index + 1)
+
+    random.shuffle(roles)
+
+    for chat_id, role in zip(user_chat_ids, roles):
+        update_user_data(chat_id, group_chat_id, "role", role)
+        bot.send_message(chat_id, f"Ваша роль - {role}")
+
+
+
+
 # функция таймера для начала игры
 def start_game_timer(message, delay=30):
     def timer_func():
@@ -97,8 +195,8 @@ def start_game_timer(message, delay=30):
             change_group_state(message.chat.id, 0)
 
         else:
-            # TODO добавить функцию начала игры
-            pass
+            assign_roles(message.chat.id)
+            make_night_stage(message.chat.id)
 
         bot.delete_message(message.chat.id, message.message_id)
 
