@@ -188,7 +188,7 @@ def start_voting_timer(message, delay=30):
 def make_voting(message, alive_users):
     alive_players_keyboard = InlineKeyboardMarkup()
 
-    for user_info in alive_users:
+    for user_info in alive_users:  # создаем клавиатуру, где у каждой кнопки text - имя юзера, data - его тг айди
         btn = InlineKeyboardButton(text=user_info[1], callback_data=user_info[0])
         alive_players_keyboard.add(btn)
 
@@ -238,11 +238,11 @@ def make_day_stage(message, killed_user_list: list):
         # delete_choice(user_id) TODO Функция удаления информации и выборе у игрока
 
         user_name = bot.get_chat_member(c_id, user_id)
-        alive_user_names.append(user_name)
+        alive_user_names.append(user_name)  # добавляем имена пользователей в список
 
     text = "Этой ночью остались в живых:\n\n"
 
-    for i, user_name in enumerate(alive_user_names):
+    for i, user_name in enumerate(alive_user_names):  # выводим список пользователей с нумерацией
         text += f"{i}. {user_name}\n"
 
     bot.send_message(c_id, text)
