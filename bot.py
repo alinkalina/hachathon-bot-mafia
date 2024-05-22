@@ -5,7 +5,7 @@ from config import BOT_TOKEN, LINK_TO_BOT, SHORT_RULES, FULL_RULES, COMMANDS, MI
 
 from database import (add_user, add_group, is_group_playing, add_user_to_games, is_user_playing,
                       change_group_state, check_user_exists, increase_session, get_players_list,
-                      get_user_current_group_chat_id, update_user_data, get_user_data, get_group_current_session, get_alive_users)
+                      get_user_current_group_chat_id, update_user_data, get_user_data, get_alive_users)
 
 import random
 import threading
