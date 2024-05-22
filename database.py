@@ -274,7 +274,7 @@ def get_alive_users(group_chat_id: int) -> list[int]:
 
 # получение списка игроков с определённой ролью
 # TODO использовать для получения списка мафии
-def get_user_with_role(group_chat_id: int, role: str) -> list[int]:
+def get_users_with_role(group_chat_id: int, role: str) -> list[int]:
     chat_ids = get_players_list(group_chat_id)
     users_with_role = []
     for chat_id in chat_ids:

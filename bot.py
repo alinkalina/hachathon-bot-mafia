@@ -5,7 +5,8 @@ from config import BOT_TOKEN, LINK_TO_BOT, SHORT_RULES, FULL_RULES, COMMANDS, MI
 
 from database import (add_user, add_group, is_group_playing, add_user_to_games, is_user_playing,
                       change_group_state, check_user_exists, increase_session, get_players_list,
-                      get_user_current_group_chat_id, update_user_data, get_user_data, get_alive_users)
+                      get_user_current_group_chat_id, update_user_data, get_user_data, get_alive_users,
+                      get_users_with_role)
 
 import random
 import threading
@@ -89,8 +90,7 @@ def ready_handler(call):
 
 # подсчет голосов мафии
 def count_mafia_votes(group_chat_id):
-    user_chat_ids = get_alive_users(group_chat_id)
-    mafia_chat_ids = [chat_id for chat_id in user_chat_ids if get_user_data(chat_id, group_chat_id, "role") == 2]
+    mafia_chat_ids = get_users_with_role(group_chat_id, 'Мафия')
 
     votes = {}
 
@@ -142,7 +142,7 @@ def process_mafia_vote(call):
 # функция ночной фазы
 def make_night_stage(group_chat_id):
     user_chat_ids = get_alive_users(group_chat_id)
-    mafia_chat_ids = [chat_id for chat_id in user_chat_ids if get_user_data(chat_id, group_chat_id, "role") == 2]
+    mafia_chat_ids = get_users_with_role(group_chat_id, 'Мафия')
 
     bot.send_message(group_chat_id, "Наступила ночь! Мафия, просыпайтесь и выберите жертву!")
 
