@@ -233,7 +233,7 @@ def update_user_data(chat_id: int, group_chat_id: int, param: str, data: str | i
     session = get_group_current_session(group_chat_id)
     if data in ROLES:
         data = get_one_by_other('id', 'name', data, table_name='roles')
-    elif data not in [0, 1]:
+    elif data not in [0, 1] and data is not None:
         data = get_one_by_other('id', 'chat_id', data, table_name='users')
     sql = (f'UPDATE games SET {param} = {data} '
            f'WHERE user_id = {user_id} and group_id = {group_id} and session = {session};')
