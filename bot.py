@@ -153,19 +153,6 @@ def start_night_timer(message, delay=30):
     threading.Timer(delay, end_night_stage).start()
 
 
-# функция обработки нажатия на кнопку мафии
-@bot.callback_query_handler(func=lambda call: True)
-def process_mafia_vote(call):
-    bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id, reply_markup=None)
-    user_chat_id = call.from_user.id
-    group_chat_id = get_user_current_group_chat_id(user_chat_id)
-
-    chosen_user_chat_id = int(call.data)
-    update_user_data(user_chat_id, group_chat_id, "choice", chosen_user_chat_id)
-    bot.answer_callback_query(call.id,
-                              f"Вы выбрали {bot.get_chat_member(group_chat_id, chosen_user_chat_id).user.username}")
-
-
 # функция ночной фазы
 def make_night_stage(message):
     group_chat_id = message.chat.id
@@ -265,9 +252,10 @@ def start_game_handler(message):
         start_game_timer(sent_message)
 
 
-@bot.callback_query_handler(func=lambda call: call.data is int)
+@bot.callback_query_handler(func=lambda call: call.data.isdigit())
 def process_user_votes(call):
     c_id = call.message.chat.id
+    m_id = call.message.message_id
 
     voted_user_id = call.from_user.id
     chosen_user_id = call.data
@@ -282,11 +270,15 @@ def process_user_votes(call):
     return_to_group_btn = InlineKeyboardButton(text="Вернуться в группу", url=link_to_group)
     return_to_group_keyboard = InlineKeyboardMarkup().add(return_to_group_btn)
 
-    chosen_user_name = bot.get_chat_member(c_id, chosen_user_id)
-    bot.edit_message_text(text=f"Ваш выбор: {chosen_user_name}", reply_markup=return_to_group_keyboard)
+    chosen_user_name = bot.get_chat_member(c_id, chosen_user_id).user.username
+    bot.edit_message_text(chat_id=c_id, message_id=m_id, text=f"Ваш выбор: {chosen_user_name}",
+                          reply_markup=return_to_group_keyboard)
 
-    voted_user_name = bot.get_chat_member(c_id, voted_user_id).user.username
-    bot.send_message(c_id, f"Игрок {voted_user_name} сделал свой выбор.")
+    mafia_chat_ids = get_users_with_role(group_chat_id, 'Мафия')
+
+    if voted_user_id not in mafia_chat_ids:
+        voted_user_name = bot.get_chat_member(c_id, voted_user_id).user.username
+        bot.send_message(group_chat_id, f"Игрок {voted_user_name} сделал свой выбор.")
 
 
 def count_daily_votes(group_chat_id):
