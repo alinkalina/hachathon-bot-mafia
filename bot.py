@@ -168,6 +168,9 @@ def make_night_stage(message):
     user_chat_ids = get_alive_users(group_chat_id)
     mafia_chat_ids = get_users_with_role(group_chat_id, 'Мафия')
 
+    for user_id in user_chat_ids:
+        update_user_data(user_id, group_chat_id, param="choice", data=None)
+
     return_to_private_btn = InlineKeyboardButton(text="Чат с ботом", url=LINK_TO_BOT)
     return_to_private_keyboard = InlineKeyboardMarkup().add(return_to_private_btn)
 
@@ -181,7 +184,8 @@ def make_night_stage(message):
                 btn = InlineKeyboardButton(text=bot.get_chat_member(group_chat_id, user_chat_id).user.username,
                                            callback_data=user_chat_id)
                 markup.add(btn)
-        bot.send_message(mafia_chat_id, "Выберите жертву!", reply_markup=markup)
+        if mafia_chat_id in user_chat_ids:
+            bot.send_message(mafia_chat_id, "Выберите жертву!", reply_markup=markup)
 
     start_night_timer(message)
 
@@ -199,8 +203,9 @@ def assign_roles(group_chat_id):
         if role == "Мафия":
             for i in range(num_mafia):
                 roles.append(role)
-        # elif role == "Комиссар":
-        #   roles.append(role_index + 1)
+        elif role == "Комиссар":
+            pass
+            # roles.append(role_index + 1)
         else:
             for i in range(num_citizens):
                 roles.append(role)
@@ -276,7 +281,7 @@ def process_user_votes(call):
     chosen_user_name = bot.get_chat_member(c_id, chosen_user_id)
     bot.edit_message_text(text=f"Ваш выбор: {chosen_user_name}", reply_markup=return_to_group_keyboard)
 
-    voted_user_name = bot.get_chat_member(c_id, voted_user_id)
+    voted_user_name = bot.get_chat_member(c_id, voted_user_id).user.username
     bot.send_message(c_id, f"Игрок {voted_user_name} сделал свой выбор.")
 
 
@@ -320,7 +325,7 @@ def start_voting_timer(message, delay=30):
 
             killed_user_name = bot.get_chat_member(c_id, killed_user_id).user.username
 
-            killed_user_role = get_user_data(c_id, killed_user_id, 'role')
+            killed_user_role = get_user_data(killed_user_id, c_id, 'role')
 
             if killed_user_role.lower() == "мафия":
                 text = "Он был мафией."
@@ -332,7 +337,7 @@ def start_voting_timer(message, delay=30):
 
             update_user_data(voting_result, message.chat.id, "killed", 1)
 
-            make_night_stage(message)
+        make_night_stage(message)
 
     threading.Timer(delay, timer_func).start()
 
@@ -374,13 +379,13 @@ def make_day_stage(message):
     for user_id in alive_user_ids:
         update_user_data(user_id, c_id, "choice", None)
 
-        user_name = bot.get_chat_member(c_id, user_id)
+        user_name = bot.get_chat_member(c_id, user_id).user.username
         alive_user_names.append(user_name)  # добавляем имена пользователей в список
 
     text = "Этой ночью остались в живых:\n\n"
 
     for i, user_name in enumerate(alive_user_names):  # выводим список пользователей с нумерацией
-        text += f"{i}. {user_name}\n"
+        text += f"{i + 1}. {user_name}\n"
 
     bot.send_message(c_id, text)
 

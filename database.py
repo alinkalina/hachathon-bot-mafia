@@ -174,8 +174,8 @@ def get_one_by_other(param_1: str, param_2: str, value: int | str, table_name: s
 
 
 # возвращает True, если юзер сейчас играет, False - если нет
-def is_user_playing(chat_id: int) -> bool:
-    user_id = get_one_by_other('id', 'chat_id', chat_id, table_name='users')
+def is_user_playing(user_chat_id: int) -> bool:
+    user_id = get_one_by_other('id', 'chat_id', user_chat_id, table_name='users')
     sql = f'SELECT group_id, session FROM games WHERE user_id = {user_id} ORDER BY id DESC LIMIT 1;'
     result = get_from_db(sql)
     if not result:
@@ -197,8 +197,8 @@ def add_user_to_games(group_chat_id: int, user_chat_id: int):
 
 
 # возвращает group_chat_id группы, в которой пользователь сейчас играет, если такая существует, если нет, то False
-def get_user_current_group_chat_id(chat_id: int) -> int | bool:
-    user_id = get_one_by_other('id', 'chat_id', chat_id, table_name='users')
+def get_user_current_group_chat_id(user_chat_id: int) -> int | bool:
+    user_id = get_one_by_other('id', 'chat_id', user_chat_id, table_name='users')
     sql = f'SELECT group_id, session FROM games WHERE user_id = {user_id} ORDER BY id DESC LIMIT 1;'
     result = get_from_db(sql)
     if not result:
@@ -227,13 +227,15 @@ def get_players_list(group_chat_id: int) -> list[int]:
 
 # для изменения данных в games, param - название колонки, data - данные (роль текстом, chat_id юзера или 0/1 (жив/убит))
 # TODO использовать для записи роли
-def update_user_data(chat_id: int, group_chat_id: int, param: str, data: str | int | None):
-    user_id = get_one_by_other('id', 'chat_id', chat_id, table_name='users')
+def update_user_data(user_chat_id: int, group_chat_id: int, param: str, data: str | int | None):
+    user_id = get_one_by_other('id', 'chat_id', user_chat_id, table_name='users')
     group_id = get_one_by_other('id', 'group_chat_id', group_chat_id, table_name='groups')
     session = get_group_current_session(group_chat_id)
     if data in ROLES:
         data = get_one_by_other('id', 'name', data, table_name='roles')
-    elif data not in [0, 1] and data is not None:
+    elif data is None:
+        data = 'null'
+    elif data not in [0, 1]:
         data = get_one_by_other('id', 'chat_id', data, table_name='users')
     sql = (f'UPDATE games SET {param} = {data} '
            f'WHERE user_id = {user_id} and group_id = {group_id} and session = {session};')
@@ -241,13 +243,14 @@ def update_user_data(chat_id: int, group_chat_id: int, param: str, data: str | i
 
 
 # получение данных из games, param - название колонки, возвращает роль текстом, chat_id юзера или 0/1 (жив/убит)
-def get_user_data(chat_id: int, group_chat_id: int, param: str) -> str | int:
-    user_id = get_one_by_other('id', 'chat_id', chat_id, table_name='users')
+def get_user_data(user_chat_id: int, group_chat_id: int, param: str) -> str | int | None:
+    user_id = get_one_by_other('id', 'chat_id', user_chat_id, table_name='users')
     group_id = get_one_by_other('id', 'group_chat_id', group_chat_id, table_name='groups')
     session = get_group_current_session(group_chat_id)
     sql = f'SELECT {param} FROM games WHERE user_id = {user_id} and group_id = {group_id} and session = {session};'
-    result = get_from_db(sql)
-    result = transform_result(result[0][0], param)
+    result = get_from_db(sql)[0][0]
+    if result is not None:
+        result = transform_result(result, param)
     return result
 
 
