@@ -257,6 +257,29 @@ def process_user_votes(call):
     bot.send_message(c_id, f"Игрок {voted_user_name} сделал свой выбор.")
 
 
+def count_daily_votes(group_chat_id):
+    alive_chat_ids = get_alive_users(group_chat_id)
+
+    votes = {}
+
+    for alive_chat_id in alive_chat_ids:
+        choice = get_user_data(alive_chat_id, group_chat_id, "choice")
+        if choice in votes:
+            votes[choice] += 1
+        else:
+            votes[choice] = 1
+
+    max_votes = max(votes.values())
+    killed_player = [player for player, votes in votes.items() if votes == max_votes]
+
+    if len(killed_player) > 1:
+        killed_player = None
+    else:
+        killed_player = killed_player[0]
+
+    return killed_player
+
+
 def start_voting_timer(message, delay=30):
     def timer_func():
         c_id = message.chat.id
@@ -264,14 +287,13 @@ def start_voting_timer(message, delay=30):
         bot.send_message(c_id, "Голосование завершено!")
 
         # получаем статус и user_id
-        # voting_result = get_voting_results() TODO Функция подсчета голосов на дневном голосовании
-        voting_result = []  # временный вариант
+        voting_result = count_daily_votes(c_id)
 
-        if not voting_result[0]:
+        if not voting_result:
             bot.send_message(c_id, "Жители решили никого не убивать сегодня.")
 
         else:
-            killed_user_id = voting_result[1]
+            killed_user_id = voting_result
 
             killed_user_name = bot.get_chat_member(c_id, killed_user_id).user.username
 
@@ -285,7 +307,7 @@ def start_voting_timer(message, delay=30):
 
             bot.send_message(c_id, f"Сегодня был изгнан игрок {killed_user_name}.\n\n" + text)
 
-            update_user_data(voting_result[1], message.chat.id, "killed", 1)
+            update_user_data(voting_result, message.chat.id, "killed", 1)
 
             make_night_stage(message)
 
