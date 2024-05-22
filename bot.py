@@ -5,7 +5,7 @@ from config import BOT_TOKEN, LINK_TO_BOT, SHORT_RULES, FULL_RULES, COMMANDS, MI
 
 from database import (add_user, add_group, is_group_playing, add_user_to_games, is_user_playing,
                       change_group_state, check_user_exists, increase_session, count_session_users,
-                      get_user_current_group_chat_id)
+                      get_user_current_group_chat_id, update_user_data)
 
 import threading
 
@@ -139,6 +139,11 @@ def process_user_votes(call):
 
     # add_user_choice(voted_user_id, chosen_user_id) TODO Функция добавления выбора игрока по его айди
 
+    group_chat_id = get_user_current_group_chat_id(voted_user_id)
+
+    # TODO нужно что-то сделать с айди выбранного игрока
+    update_user_data(voted_user_id, group_chat_id, "choice", chosen_user_id)
+
     link_to_group = get_group_link(voted_user_id)
 
     # создаем кнопку для перехода в группу
@@ -175,7 +180,7 @@ def start_voting_timer(message, delay=30):
 
             bot.send_message(c_id, f"Сегодня был изгнан игрок {killed_user_name} с ролью {killed_user_role}")
 
-            # change_user_info(voting_result, "killed", data=1) TODO добавить функцию изменения информации об игроке
+            update_user_data(voting_result[1], message.chat.id, "killed", 1)
 
             # make_night_stage() TODO снова переходим в функцию начала ночи
 
@@ -224,13 +229,15 @@ def make_day_stage(message, killed_user_list: list):
 
         bot.send_message(c_id, f"Этой ночью был зверски убит игрок по имени {killed_user_name}")
 
-        # change_user_info(killed_user_id, "killed", data=1) TODO добавить функцию изменения информации об игроке
+        update_user_data(killed_user_id, message.chat.id, "killed", 1)
 
     # alive_users_ids = get_alive_users() TODO Функция для получения списка из телеграм айди живых игроков
     alive_user_ids = []  # временный вариант
     alive_user_names = []
 
     for user_id in alive_user_ids:
+        # delete_choice(user_id) TODO Функция удаления информации и выборе у игрока
+
         user_name = bot.get_chat_member(message.chat.id, user_id)
         alive_user_names.append(user_name)
 
