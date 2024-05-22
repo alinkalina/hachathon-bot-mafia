@@ -149,7 +149,11 @@ def make_night_stage(message):
     user_chat_ids = get_alive_users(group_chat_id)
     mafia_chat_ids = get_users_with_role(group_chat_id, 'Мафия')
 
-    bot.send_message(group_chat_id, "Наступила ночь! Мафия, просыпайтесь и выберите жертву!")
+    return_to_private_btn = InlineKeyboardButton(text="Чат с ботом", url=LINK_TO_BOT)
+    return_to_private_keyboard = InlineKeyboardMarkup().add(return_to_private_btn)
+
+    bot.send_message(group_chat_id, "Наступила ночь! Мафия, просыпайтесь и выберите жертву!",
+                     reply_markup=return_to_private_keyboard)
 
     for mafia_chat_id in mafia_chat_ids:
         markup = InlineKeyboardMarkup()
