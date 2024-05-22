@@ -272,5 +272,17 @@ def get_alive_users(group_chat_id: int) -> list[int]:
     return alive_users
 
 
+# получение списка игроков с определённой ролью
+# TODO использовать для получения списка мафии
+def get_user_with_role(group_chat_id: int, role: str) -> list[int]:
+    chat_ids = get_players_list(group_chat_id)
+    users_with_role = []
+    for chat_id in chat_ids:
+        user_role_id = get_user_data(chat_id, group_chat_id, 'role')
+        if user_role_id == role:
+            users_with_role.append(chat_id)
+    return users_with_role
+
+
 create_tables()
 update_roles()

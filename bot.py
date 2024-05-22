@@ -5,7 +5,8 @@ from config import BOT_TOKEN, LINK_TO_BOT, SHORT_RULES, FULL_RULES, COMMANDS, MI
 
 from database import (add_user, add_group, is_group_playing, add_user_to_games, is_user_playing,
                       change_group_state, check_user_exists, increase_session, get_players_list,
-                      get_user_current_group_chat_id, update_user_data, get_user_data, get_alive_users)
+                      get_user_current_group_chat_id, update_user_data, get_user_data, get_group_current_session, get_alive_users)
+
 import random
 import threading
 
@@ -117,7 +118,8 @@ def start_night_timer(group_chat_id, delay=30):
         killed_player = count_mafia_votes(group_chat_id)
         if killed_player is not None:
             update_user_data(killed_player, group_chat_id, "killed", 1)
-            bot.send_message(group_chat_id, f"Мафия убила игрока {bot.get_chat_member(group_chat_id, killed_player).user.username}")
+            bot.send_message(group_chat_id,
+                             f"Мафия убила игрока {bot.get_chat_member(group_chat_id, killed_player).user.username}")
         else:
             bot.send_message(group_chat_id, "Мафия не смогла договориться и никого не убила")
 
@@ -126,14 +128,15 @@ def start_night_timer(group_chat_id, delay=30):
 
 # функция обработки нажатия на кнопку мафии
 @bot.callback_query_handler(func=lambda call: True)
-def process_mafia_vote(call):
+def procces_mafia_vote(call):
     bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id, reply_markup=None)
     user_chat_id = call.from_user.id
     group_chat_id = get_user_current_group_chat_id(user_chat_id)
 
     chosen_user_chat_id = int(call.data)
     update_user_data(user_chat_id, group_chat_id, "choice", chosen_user_chat_id)
-    bot.answer_callback_query(call.id, f"Вы выбрали {bot.get_chat_member(group_chat_id, chosen_user_chat_id).user.username}")
+    bot.answer_callback_query(call.id,
+                              f"Вы выбрали {bot.get_chat_member(group_chat_id, chosen_user_chat_id).user.username}")
 
 
 # функция ночной фазы
@@ -167,8 +170,8 @@ def assign_roles(group_chat_id):
         if ROLES[role_index] == "Мафия":
             for i in range(num_mafia):
                 roles.append(role_index + 1)
-         #elif role == "Комиссар":
-         #   roles.append(role_index + 1)
+        # elif role == "Комиссар":
+        #   roles.append(role_index + 1)
         else:
             for i in range(num_citizens):
                 roles.append(role_index + 1)
@@ -178,6 +181,8 @@ def assign_roles(group_chat_id):
     for chat_id, role in zip(user_chat_ids, roles):
         update_user_data(chat_id, group_chat_id, "role", role)
         bot.send_message(chat_id, f"Ваша роль - {role}")
+
+
 
 
 # функция таймера для начала игры
