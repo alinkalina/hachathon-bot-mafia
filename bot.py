@@ -174,7 +174,13 @@ def start_voting_timer(message, delay=30):
 
             killed_user_role = get_user_data(c_id, killed_user_id, 'role')
 
-            bot.send_message(c_id, f"Сегодня был изгнан игрок {killed_user_name} с ролью {killed_user_role}")
+            if killed_user_role.lower() == "мафия":
+                text = "Он был мафией."
+
+            else:
+                text = "Он не был мафией."
+
+            bot.send_message(c_id, f"Сегодня был изгнан игрок {killed_user_name}.\n\n" + text)
 
             update_user_data(voting_result[1], message.chat.id, "killed", 1)
 
