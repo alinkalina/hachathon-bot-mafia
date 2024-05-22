@@ -113,15 +113,19 @@ def count_mafia_votes(group_chat_id):
 
 
 # функция ночного таймера
-def start_night_timer(group_chat_id, delay=30):
+def start_night_timer(message, delay=30):
     def end_night_stage():
+        group_chat_id = message.chat.id
         killed_player = count_mafia_votes(group_chat_id)
+
         if killed_player is not None:
             update_user_data(killed_player, group_chat_id, "killed", 1)
             bot.send_message(group_chat_id,
                              f"Мафия убила игрока {bot.get_chat_member(group_chat_id, killed_player).user.username}")
         else:
             bot.send_message(group_chat_id, "Мафия не смогла договориться и никого не убила")
+
+        make_day_stage(message)
 
     threading.Timer(delay, end_night_stage).start()
 
@@ -140,7 +144,8 @@ def process_mafia_vote(call):
 
 
 # функция ночной фазы
-def make_night_stage(group_chat_id):
+def make_night_stage(message):
+    group_chat_id = message.chat.id
     user_chat_ids = get_alive_users(group_chat_id)
     mafia_chat_ids = [chat_id for chat_id in user_chat_ids if get_user_data(chat_id, group_chat_id, "role") == 2]
 
@@ -155,7 +160,7 @@ def make_night_stage(group_chat_id):
                 markup.add(btn)
         bot.send_message(mafia_chat_id, "Выберите жертву!", reply_markup=markup)
 
-    start_night_timer(group_chat_id)
+    start_night_timer(message)
 
 
 # функция назначения ролей для игры
@@ -195,7 +200,7 @@ def start_game_timer(message, delay=30):
 
         else:
             assign_roles(message.chat.id)
-            make_night_stage(message.chat.id)
+            make_night_stage(message)
 
         bot.delete_message(message.chat.id, message.message_id)
 
@@ -281,7 +286,7 @@ def start_voting_timer(message, delay=30):
 
             update_user_data(voting_result[1], message.chat.id, "killed", 1)
 
-            # make_night_stage() TODO снова переходим в функцию начала ночи
+            make_night_stage(message)
 
     threading.Timer(delay, timer_func).start()
 
@@ -314,22 +319,8 @@ def start_discussion_timer(message, alive_users, delay=180):
     threading.Timer(delay, timer_func).start()
 
 
-def make_day_stage(message, killed_user_list: list):
+def make_day_stage(message):
     c_id = message.chat.id
-    # killed_user_list - список, который передается из ночной фазы по результатам голосования мафии
-    is_user_killed = killed_user_list[0]
-
-    if not is_user_killed:
-        bot.send_message(c_id, "Кажется, мафия не смогла договориться и этой ночью никто не был убит.")
-
-    else:
-        killed_user_id = killed_user_list[1]
-
-        killed_user_name = bot.get_chat_member(c_id, killed_user_id).user.username
-
-        bot.send_message(c_id, f"Этой ночью был зверски убит игрок по имени {killed_user_name}")
-
-        update_user_data(killed_user_id, message.chat.id, "killed", 1)
 
     alive_user_ids = get_alive_users(c_id)
     alive_user_names = []
