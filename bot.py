@@ -237,7 +237,7 @@ def make_day_stage(message, killed_user_list: list):
     for user_id in alive_user_ids:
         # delete_choice(user_id) TODO Функция удаления информации и выборе у игрока
 
-        user_name = bot.get_chat_member(message.chat.id, user_id)
+        user_name = bot.get_chat_member(c_id, user_id)
         alive_user_names.append(user_name)
 
     text = "Этой ночью остались в живых:\n\n"
@@ -252,7 +252,7 @@ def make_day_stage(message, killed_user_list: list):
     alive_users = []
 
     for i in range(len(alive_user_ids)):
-        alive_users.append([alive_user_ids[i], alive_user_names[i]])
+        alive_users.append([alive_user_ids[i], alive_user_names[i]])  # Нужно для кнопок в голосовании
 
     start_discussion_timer(message, alive_users)
 
