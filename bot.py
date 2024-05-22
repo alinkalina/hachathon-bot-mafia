@@ -128,7 +128,7 @@ def start_night_timer(group_chat_id, delay=30):
 
 # функция обработки нажатия на кнопку мафии
 @bot.callback_query_handler(func=lambda call: True)
-def procces_mafia_vote(call):
+def process_mafia_vote(call):
     bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id, reply_markup=None)
     user_chat_id = call.from_user.id
     group_chat_id = get_user_current_group_chat_id(user_chat_id)
@@ -181,8 +181,6 @@ def assign_roles(group_chat_id):
     for chat_id, role in zip(user_chat_ids, roles):
         update_user_data(chat_id, group_chat_id, "role", role)
         bot.send_message(chat_id, f"Ваша роль - {role}")
-
-
 
 
 # функция таймера для начала игры
