@@ -70,6 +70,8 @@ def send_rules(message):
 @bot.callback_query_handler(func=lambda call: call.data == "ready")
 def ready_handler(call):
     user_id = call.from_user.id
+    c_id = call.message.chat.id
+    m_id = call.message.message_id
 
     if not check_user_exists(user_id):
         return_to_private_btn = InlineKeyboardButton(text="Чат с ботом", url=LINK_TO_BOT)
@@ -85,7 +87,24 @@ def ready_handler(call):
     else:
         add_user_to_games(call.message.chat.id, user_id)
 
-        bot.send_message(call.message.chat.id, f"Пользователь {call.from_user.username} готов к игре!")
+        ready_user_ids = get_players_list(c_id)
+        ready_user_names = []
+
+        for user_id in ready_user_ids:
+            user_name = bot.get_chat_member(c_id, user_id).user.username
+            ready_user_names.append(user_name)
+
+        markup = InlineKeyboardMarkup()
+        play_button = InlineKeyboardButton("Готов!", callback_data="ready")
+        markup.add(play_button)
+
+        text = ("Нажмите на кнопку, когда будете готовы!\n\n"
+                "Присоединившиеся игроки:\n")
+
+        for i, user_name in enumerate(ready_user_names):
+            text += f"{i + 1}. {user_name}\n"
+
+        bot.edit_message_text(text=text, chat_id=c_id, message_id=m_id, reply_markup=markup)
 
 
 # подсчет голосов мафии
