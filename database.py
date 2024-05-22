@@ -217,5 +217,19 @@ def get_user_current_group_chat_id(chat_id: int) -> int | bool:
     return False
 
 
+# возвращает список chat_id пользователей, присоединившихся к игре
+# TODO использовать для раздачи ролей
+def get_session_users(group_chat_id: int) -> list[int]:
+    current_session = get_group_current_session(group_chat_id)
+    group_id = get_one_by_other('id', 'group_chat_id', group_chat_id, table_name='groups')
+    sql = f'SELECT user_id FROM games WHERE group_id = {group_id} and session = {current_session};'
+    result = get_from_db(sql)
+    chat_ids = []
+    for user_id in result:
+        chat_id = get_one_by_other('chat_id', 'id', user_id[0], table_name='users')
+        chat_ids.append(chat_id)
+    return chat_ids
+
+
 create_tables()
 update_roles()
