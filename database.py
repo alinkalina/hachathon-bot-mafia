@@ -164,10 +164,13 @@ def increase_session(group_chat_id: int):
 
 
 # должна использоваться только в этом файле
-def get_one_by_other(param_1: str, param_2: str, value: int, table_name: str) -> int:
-    sql = f'SELECT {param_1} FROM {table_name} WHERE {param_2} = {value};'
+def get_one_by_other(param_1: str, param_2: str, value: int | str, table_name: str) -> int | str:
+    if table_name == 'roles' and param_1 == 'id':
+        sql = f'SELECT {param_1} FROM {table_name} WHERE {param_2} = "{value}";'
+    else:
+        sql = f'SELECT {param_1} FROM {table_name} WHERE {param_2} = {value};'
     result = get_from_db(sql)
-    return int(result[0][0])
+    return result[0][0]
 
 
 # возвращает True, если юзер сейчас играет, False - если нет
@@ -229,6 +232,19 @@ def get_session_users(group_chat_id: int) -> list[int]:
         chat_id = get_one_by_other('chat_id', 'id', user_id[0], table_name='users')
         chat_ids.append(chat_id)
     return chat_ids
+
+
+# для изменения данных в games, param - название колонки, data - данные (роль текстом, chat_id юзера или 0/1 (жив/убит))
+def update_user_data(chat_id: int, group_chat_id: int, param: str, data: str | int):
+    user_id = get_one_by_other('id', 'chat_id', chat_id, table_name='users')
+    group_id = get_one_by_other('id', 'group_chat_id', group_chat_id, table_name='groups')
+    session = get_group_current_session(group_chat_id)
+    if data in ROLES:
+        data = get_one_by_other('id', 'name', data, table_name='roles')
+    elif data not in [0, 1]:
+        data = get_one_by_other('id', 'chat_id', data, table_name='users')
+    sql = f'UPDATE games SET {param} = {data} WHERE user_id = {user_id} and group_id = {group_id} and session = {session};'
+    change_db(sql)
 
 
 create_tables()
