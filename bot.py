@@ -119,11 +119,15 @@ def count_mafia_votes(group_chat_id):
             votes[choice] += 1
         else:
             votes[choice] = 1
+    if votes.values():
+        max_votes = max(votes.values())
 
-    max_votes = max(votes.values())
+    else:
+        max_votes = 0
+
     killed_player = [player for player, votes in votes.items() if votes == max_votes]
 
-    if len(killed_player) > 1:
+    if len(killed_player) <= 1:
         killed_player = None
     else:
         killed_player = killed_player[0]
@@ -337,6 +341,21 @@ def start_voting_timer(message, delay=30):
 
             update_user_data(voting_result, message.chat.id, "killed", 1)
 
+        alive_user_ids = get_alive_users(c_id)
+        mafia_chat_ids = get_users_with_role(c_id, 'Мафия')
+
+        pieceful_player_ids = sorted(list(set(alive_user_ids) - set(mafia_chat_ids)))
+
+        if len(pieceful_player_ids) <= len(mafia_chat_ids):
+            make_results(c_id, "mafia", mafia_chat_ids)
+
+            return
+
+        elif len(mafia_chat_ids) == 0:
+            make_results(c_id, "pieceful_players", pieceful_player_ids)
+
+            return
+
         make_night_stage(message)
 
     threading.Timer(delay, timer_func).start()
@@ -382,6 +401,20 @@ def make_day_stage(message):
         user_name = bot.get_chat_member(c_id, user_id).user.username
         alive_user_names.append(user_name)  # добавляем имена пользователей в список
 
+    mafia_chat_ids = get_users_with_role(c_id, 'Мафия')
+
+    pieceful_player_ids = sorted(list(set(alive_user_ids) - set(mafia_chat_ids)))
+
+    if len(pieceful_player_ids) <= len(mafia_chat_ids):
+        make_results(c_id, "mafia", mafia_chat_ids)
+
+        return
+
+    elif len(mafia_chat_ids) == 0:
+        make_results(c_id, "pieceful_players", pieceful_player_ids)
+
+        return
+
     text = "Этой ночью остались в живых:\n\n"
 
     for i, user_name in enumerate(alive_user_names):  # выводим список пользователей с нумерацией
@@ -397,6 +430,29 @@ def make_day_stage(message):
         alive_users.append([alive_user_ids[i], alive_user_names[i]])  # Нужно для кнопок в голосовании
 
     start_discussion_timer(message, alive_users)
+
+
+def make_results(chat_id, winners_team, winners_list):
+    winners_names = []
+
+    if winners_team == "mafia":
+        text = "Мафия выиграла!\n\n"
+
+    else:
+        text = "Мирные жители смогли побороть мафию!\n\n"
+
+    text += "Победившие игроки:\n"
+
+    for user_id in winners_list:
+        user_name = bot.get_chat_member(chat_id, user_id).user.username
+        winners_names.append(user_name)  # добавляем имена пользователей в список
+
+    for i, user_name in enumerate(winners_names):
+        text += f"{i + 1}. {user_name}\n"
+
+    bot.send_message(chat_id, text)
+
+    change_group_state(chat_id, 0)
 
 
 if __name__ == "__main__":
