@@ -227,7 +227,7 @@ def get_session_users(group_chat_id: int) -> list[int]:
 
 # для изменения данных в games, param - название колонки, data - данные (роль текстом, chat_id юзера или 0/1 (жив/убит))
 # TODO использовать для записи роли
-def update_user_data(chat_id: int, group_chat_id: int, param: str, data: str | int):
+def update_user_data(chat_id: int, group_chat_id: int, param: str, data: str | int | None):
     user_id = get_one_by_other('id', 'chat_id', chat_id, table_name='users')
     group_id = get_one_by_other('id', 'group_chat_id', group_chat_id, table_name='groups')
     session = get_group_current_session(group_chat_id)

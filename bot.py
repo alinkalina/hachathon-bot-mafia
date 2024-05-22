@@ -139,7 +139,6 @@ def process_user_votes(call):
 
     group_chat_id = get_user_current_group_chat_id(voted_user_id)
 
-    # TODO нужно что-то сделать с айди выбранного игрока
     update_user_data(voted_user_id, group_chat_id, "choice", chosen_user_id)
 
     link_to_group = get_group_link(voted_user_id)
@@ -234,7 +233,7 @@ def make_day_stage(message, killed_user_list: list):
     alive_user_names = []
 
     for user_id in alive_user_ids:
-        # delete_choice(user_id) TODO Функция удаления информации и выборе у игрока
+        update_user_data(user_id, c_id, "choice", "")
 
         user_name = bot.get_chat_member(c_id, user_id)
         alive_user_names.append(user_name)  # добавляем имена пользователей в список
