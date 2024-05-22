@@ -97,9 +97,9 @@ def count_mafia_votes(group_chat_id):
     for mafia_chat_id in mafia_chat_ids:
         choice = get_user_data(mafia_chat_id, group_chat_id, "choice")
         if choice in votes:
-            votes[choice] = 1
-        else:
             votes[choice] += 1
+        else:
+            votes[choice] = 1
 
     max_votes = max(votes.values())
     killed_player = [player for player, votes in votes.items() if votes == max_votes]
@@ -172,14 +172,15 @@ def assign_roles(group_chat_id):
 
     roles = []
     for role_index in range(len(ROLES)):
-        if ROLES[role_index] == "Мафия":
+        role = ROLES[role_index]
+        if role == "Мафия":
             for i in range(num_mafia):
-                roles.append(role_index + 1)
+                roles.append(role)
         # elif role == "Комиссар":
         #   roles.append(role_index + 1)
         else:
             for i in range(num_citizens):
-                roles.append(role_index + 1)
+                roles.append(role)
 
     random.shuffle(roles)
 
