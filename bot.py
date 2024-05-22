@@ -137,8 +137,6 @@ def process_user_votes(call):
     voted_user_id = call.from_user.id
     chosen_user_id = call.data
 
-    # add_user_choice(voted_user_id, chosen_user_id) TODO Функция добавления выбора игрока по его айди
-
     group_chat_id = get_user_current_group_chat_id(voted_user_id)
 
     # TODO нужно что-то сделать с айди выбранного игрока
