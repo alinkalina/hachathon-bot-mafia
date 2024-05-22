@@ -5,7 +5,7 @@ from config import BOT_TOKEN, LINK_TO_BOT, SHORT_RULES, FULL_RULES, COMMANDS, MI
 
 from database import (add_user, add_group, is_group_playing, add_user_to_games, is_user_playing,
                       change_group_state, check_user_exists, increase_session, count_session_users,
-                      get_user_current_group_chat_id, update_user_data)
+                      get_user_current_group_chat_id, update_user_data, get_user_data)
 
 import threading
 
@@ -173,8 +173,7 @@ def start_voting_timer(message, delay=30):
 
             killed_user_name = bot.get_chat_member(c_id, killed_user_id).user.username
 
-            # killed_user_role = get_user_data().role TODO Добавить функцию получения данных об игроке
-            killed_user_role = "какая-то роль"
+            killed_user_role = get_user_data(c_id, killed_user_id, 'role')
 
             bot.send_message(c_id, f"Сегодня был изгнан игрок {killed_user_name} с ролью {killed_user_role}")
 

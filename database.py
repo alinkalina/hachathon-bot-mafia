@@ -235,6 +235,7 @@ def get_session_users(group_chat_id: int) -> list[int]:
 
 
 # для изменения данных в games, param - название колонки, data - данные (роль текстом, chat_id юзера или 0/1 (жив/убит))
+# TODO использовать для записи роли
 def update_user_data(chat_id: int, group_chat_id: int, param: str, data: str | int):
     user_id = get_one_by_other('id', 'chat_id', chat_id, table_name='users')
     group_id = get_one_by_other('id', 'group_chat_id', group_chat_id, table_name='groups')
@@ -243,8 +244,29 @@ def update_user_data(chat_id: int, group_chat_id: int, param: str, data: str | i
         data = get_one_by_other('id', 'name', data, table_name='roles')
     elif data not in [0, 1]:
         data = get_one_by_other('id', 'chat_id', data, table_name='users')
-    sql = f'UPDATE games SET {param} = {data} WHERE user_id = {user_id} and group_id = {group_id} and session = {session};'
+    sql = (f'UPDATE games SET {param} = {data} '
+           f'WHERE user_id = {user_id} and group_id = {group_id} and session = {session};')
     change_db(sql)
+
+
+# получение данных из games, param - название колонки, возвращает роль текстом, chat_id юзера или 0/1 (жив/убит)
+def get_user_data(chat_id: int, group_chat_id: int, param: str) -> str | int:
+    user_id = get_one_by_other('id', 'chat_id', chat_id, table_name='users')
+    group_id = get_one_by_other('id', 'group_chat_id', group_chat_id, table_name='groups')
+    session = get_group_current_session(group_chat_id)
+    sql = f'SELECT {param} FROM games WHERE user_id = {user_id} and group_id = {group_id} and session = {session};'
+    result = get_from_db(sql)
+    result = transform_result(result[0][0], param)
+    return result
+
+
+# переводит id в результат, который нужно вернуть в bot.py, используется только в этом файле
+def transform_result(result: int, param: str) -> str | int:
+    if param == 'role':
+        result = get_one_by_other('name', 'id', result, table_name='roles')
+    elif param == 'choice':
+        result = get_one_by_other('chat_id', 'id', result, table_name='users')
+    return result
 
 
 create_tables()
