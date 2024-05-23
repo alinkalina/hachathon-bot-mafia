@@ -80,7 +80,7 @@ def get_group_link(user_id):
 @bot.message_handler(commands=["rules"])
 def send_rules(message):
     if message.chat.type == "private":
-        bot.send_message(message.chat.id, FULL_RULES)
+        bot.send_message(message.chat.id, FULL_RULES, parse_mode="html")
 
     else:
         return_to_private_btn = InlineKeyboardButton(text="Чат с ботом", url=LINK_TO_BOT)
