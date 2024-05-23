@@ -12,12 +12,13 @@ import random
 import threading
 from telebot.storage import StateMemoryStorage
 from telebot import custom_filters
-from telebot.handler_backends import StatesGroup
+from telebot.handler_backends import StatesGroup, State
 
 
 class MyStates(StatesGroup):
     message_to_delete = "message to delete"
     mafia_chat = 'chat for mafia'
+    msg_with_buttons = State()
 
 
 storage = StateMemoryStorage()
@@ -154,6 +155,25 @@ def mafia_chat(message):
 # функция ночного таймера
 def start_night_timer(message, delay=60):
     def end_night_stage():
+
+        for mafia_chat_id in mafia_chat_ids:
+            if mafia_chat_id in alive_players:
+                choice = get_user_data(mafia_chat_id, group_chat_id, "choice")
+
+                if choice is None:
+                    link_to_group = get_group_link(mafia_chat_id)
+
+                    # создаем кнопку для перехода в группу
+                    return_to_group_btn = InlineKeyboardButton(text="Вернуться в группу", url=link_to_group)
+                    return_to_group_keyboard = InlineKeyboardMarkup().add(return_to_group_btn)
+
+                    with bot.retrieve_data(mafia_chat_id, mafia_chat_id) as data:
+                        msg_with_button_id = data["msg_with_button_id"]
+
+                        bot.edit_message_text(chat_id=mafia_chat_id, message_id=msg_with_button_id,
+                                              text="Этой ночью вы никого не выбрали!",
+                                              reply_markup=return_to_group_keyboard)
+
         for alive_chat_id in alive_players:
             # bot.send_message(group_chat_id, "Мафия закончила обсуждение.")
             bot.delete_state(alive_chat_id, alive_chat_id)
@@ -178,8 +198,10 @@ def start_night_timer(message, delay=60):
 
     mafia_chat_ids = get_users_with_role(group_chat_id, 'Мафия')
     for mafia_chat_id in mafia_chat_ids:
-        bot.send_message(mafia_chat_id, "Даю вам минуту на то, чтобы обсудить свой выбор!")
-        bot.set_state(mafia_chat_id, MyStates.mafia_chat, mafia_chat_id)
+
+        if len(mafia_chat_ids) > 1:
+            bot.send_message(mafia_chat_id, "Даю вам минуту на то, чтобы обсудить свой выбор!")
+            bot.set_state(mafia_chat_id, MyStates.mafia_chat, mafia_chat_id)
 
     threading.Timer(delay, end_night_stage).start()
 
@@ -207,7 +229,12 @@ def make_night_stage(message):
                                            callback_data=user_chat_id)
                 markup.add(btn)
         if mafia_chat_id in user_chat_ids:
-            bot.send_message(mafia_chat_id, "Выберите жертву!", reply_markup=markup)
+            msg_with_button = bot.send_message(mafia_chat_id, "Выберите жертву!", reply_markup=markup)
+
+            bot.set_state(mafia_chat_id, MyStates.msg_with_buttons, mafia_chat_id)
+
+            with bot.retrieve_data(mafia_chat_id, mafia_chat_id) as data:
+                data['msg_with_button_id'] = msg_with_button.message_id
 
     start_night_timer(message)
 
@@ -307,6 +334,7 @@ def process_user_votes(call):
 
         bot.edit_message_text(chat_id=c_id, message_id=m_id, text=f"Ваш выбор: {chosen_user_name}",
                               reply_markup=return_to_group_keyboard)
+
     except IndexError:
         bot.edit_message_text(chat_id=c_id, message_id=m_id, text=f"Кажется, кнопка устарела", reply_markup=None)
 
@@ -345,6 +373,23 @@ def start_voting_timer(message, delay=30):
         # получаем статус и user_id
         alive_user_ids = get_alive_users(c_id)
         voting_result = count_votes(c_id, alive_user_ids)
+
+        for alive_user_chat_id in alive_user_ids:
+            choice = get_user_data(alive_user_chat_id, c_id, "choice")
+
+            if choice is None:
+                link_to_group = get_group_link(alive_user_chat_id)
+
+                # создаем кнопку для перехода в группу
+                return_to_group_btn = InlineKeyboardButton(text="Вернуться в группу", url=link_to_group)
+                return_to_group_keyboard = InlineKeyboardMarkup().add(return_to_group_btn)
+
+                with bot.retrieve_data(alive_user_chat_id, alive_user_chat_id) as data:
+                    msg_with_button_id = data["msg_with_button_id"]
+
+                    bot.edit_message_text(chat_id=alive_user_chat_id, message_id=msg_with_button_id,
+                                          text="Сегодня вы решили никого не выгонять.",
+                                          reply_markup=return_to_group_keyboard)
 
         if not voting_result:
             bot.send_message(c_id, "Жители решили никого не убивать сегодня.")
@@ -399,9 +444,15 @@ def make_voting(message, alive_users):
                      reply_markup=return_to_private_keyboard)
 
     for user_info in alive_users:
-        bot.send_message(user_info[0], "Пришло время кого-нибудь изгнать! "
-                                       "У вас есть 30 секунд на то, чтобы сделать выбор",
-                         reply_markup=alive_players_keyboard)
+        user_id = user_info[0]
+        msg_with_button = bot.send_message(user_id, "Пришло время кого-нибудь изгнать! "
+                                           "У вас есть 30 секунд на то, чтобы сделать выбор",
+                                           reply_markup=alive_players_keyboard)
+
+        bot.set_state(user_id, MyStates.msg_with_buttons, user_id)
+
+        with bot.retrieve_data(user_id, user_id) as data:
+            data['msg_with_button_id'] = msg_with_button.message_id
 
     start_voting_timer(message)
 
