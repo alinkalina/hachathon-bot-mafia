@@ -1,7 +1,7 @@
 import telebot
 
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
-from config import BOT_TOKEN, LINK_TO_BOT, SHORT_RULES, FULL_RULES, COMMANDS, MIN_PLAYERS, ROLES
+from config import BOT_TOKEN, LINK_TO_BOT, SHORT_RULES, FULL_RULES, COMMANDS, MIN_PLAYERS, ROLES, CONTENT_TYPES
 
 from database import (add_user, add_group, is_group_playing, add_user_to_games, is_user_playing,
                       change_group_state, check_user_exists, increase_session, get_players_list,
@@ -29,6 +29,10 @@ bot.add_custom_filter(custom_filters.StateFilter(bot))
 @bot.message_handler(commands=["start"], chat_types=["supergroup"])
 def handle_group_start(message):
     add_group(message.chat.id)
+
+    if is_group_playing(message.chat.id):
+        bot.delete_message(message.chat.id, message.message_id)
+        return
 
     # создаем кнопку для перехода в чат с ботом
     return_to_private_btn = InlineKeyboardButton(text="Чат с ботом", url=LINK_TO_BOT)
@@ -73,9 +77,16 @@ def get_group_link(user_id):
         return link_to_group
 
 
-@bot.message_handler(commands=["rules"], chat_types=["private"])
+@bot.message_handler(commands=["rules"])
 def send_rules(message):
-    bot.send_message(message.chat.id, FULL_RULES)
+    if message.chat.type == "private":
+        bot.send_message(message.chat.id, FULL_RULES)
+
+    else:
+        return_to_private_btn = InlineKeyboardButton(text="Чат с ботом", url=LINK_TO_BOT)
+        keyboard = InlineKeyboardMarkup().add(return_to_private_btn)
+        bot.send_message(message.chat.id, "Для того, чтобы узнать полные правила "
+                                          "используйте команду /rules в чате со мной.", reply_markup=keyboard)
 
 
 # обработка нажатия на кнопку "Готов!"
@@ -122,16 +133,11 @@ def ready_handler(call):
 # функция чата мафии
 @bot.message_handler(state=MyStates.message_to_delete)
 def delete_forbidden_messages(message):
-    print('mafia chat')
     user_chat_id = message.from_user.id
     group_chat_id = get_user_current_group_chat_id(user_chat_id)
 
-    print(user_chat_id, message.chat.type)
-
     if message.chat.type == 'supergroup':
         bot.delete_message(group_chat_id, message.message_id)
-
-    print('чат')
 
 
 @bot.message_handler(state=MyStates.mafia_chat)
@@ -146,12 +152,12 @@ def mafia_chat(message):
 
 
 # функция ночного таймера
-def start_night_timer(message, delay=15):
+def start_night_timer(message, delay=60):
     def end_night_stage():
         for alive_chat_id in alive_players:
             # bot.send_message(group_chat_id, "Мафия закончила обсуждение.")
-            bot.delete_state(chat_id, chat_id)
-            bot.delete_state(chat_id, group_chat_id)
+            bot.delete_state(alive_chat_id, alive_chat_id)
+            bot.delete_state(alive_chat_id, group_chat_id)
 
         killed_player = count_votes(group_chat_id, mafia_chat_ids)
 
@@ -172,6 +178,7 @@ def start_night_timer(message, delay=15):
 
     mafia_chat_ids = get_users_with_role(group_chat_id, 'Мафия')
     for mafia_chat_id in mafia_chat_ids:
+        bot.send_message(mafia_chat_id, "Даю вам минуту на то, чтобы обсудить свой выбор!")
         bot.set_state(mafia_chat_id, MyStates.mafia_chat, mafia_chat_id)
 
     threading.Timer(delay, end_night_stage).start()
@@ -233,7 +240,7 @@ def assign_roles(group_chat_id):
 
 
 # функция таймера для начала игры
-def start_game_timer(message, sent_message, delay=10):
+def start_game_timer(message, sent_message, delay=30):
     def timer_func():
         joined_players = len(get_players_list(message.chat.id))
 
@@ -282,8 +289,7 @@ def process_user_votes(call):
     m_id = call.message.message_id
 
     voted_user_id = call.from_user.id
-    chosen_user_id = call.data
-    print(voted_user_id, chosen_user_id)
+    chosen_user_id = int(call.data)
 
     group_chat_id = get_user_current_group_chat_id(voted_user_id)
 
@@ -295,15 +301,10 @@ def process_user_votes(call):
     return_to_group_btn = InlineKeyboardButton(text="Вернуться в группу", url=link_to_group)
     return_to_group_keyboard = InlineKeyboardMarkup().add(return_to_group_btn)
 
-    # chosen_user_name = bot.get_chat_member(c_id, chosen_user_id).user.username
-    bot.edit_message_text(chat_id=c_id, message_id=m_id, text=f"Ваш выбор: {chosen_user_id}",
+    chosen_user_name = bot.get_chat_member(group_chat_id, chosen_user_id).user.username
+
+    bot.edit_message_text(chat_id=c_id, message_id=m_id, text=f"Ваш выбор: {chosen_user_name}",
                           reply_markup=return_to_group_keyboard)
-
-    mafia_chat_ids = get_users_with_role(group_chat_id, 'Мафия')
-
-    if voted_user_id not in mafia_chat_ids:
-        voted_user_name = bot.get_chat_member(c_id, voted_user_id).user.username
-        bot.send_message(group_chat_id, f"Игрок {voted_user_name} сделал свой выбор.")
 
 
 def count_votes(group_chat_id, voted_users):
@@ -331,7 +332,7 @@ def count_votes(group_chat_id, voted_users):
     return killed_player
 
 
-def start_voting_timer(message, delay=10):
+def start_voting_timer(message, delay=30):
     def timer_func():
         c_id = message.chat.id
 
@@ -401,7 +402,7 @@ def make_voting(message, alive_users):
     start_voting_timer(message)
 
 
-def start_discussion_timer(message, alive_users, delay=20):
+def start_discussion_timer(message, alive_users, delay=180):
     def timer_func():
         make_voting(message, alive_users)
 
@@ -479,54 +480,18 @@ def deleting_state(message):
     change_group_state(message.chat.id, 0)
 
 
-
-
-
-#
-#
-#
-# @bot.message_handler(state=MyStates.get_message)
-# def answer_message(message):
-#     players = [922598615, 1722704753]
-#
-#     bot.send_message(message.chat.id, f"Получил ваше сообщение {message.from_user.id}")
-#
-#
-# @bot.message_handler(commands=["test"])  # Начинаем отсюда
-# def handle_message(message):
-#     players = [922598615, 1722704753]
-#
-#     for user in players:
-#         bot.set_state(user, MyStates.get_message, message.chat.id)
-#
-#     bot.send_message(message.chat.id, "Можете начать обсуждение")
-#
-#     threading.Timer(7, end_getting_msg, [message]).start()
-#
-#
-# def end_getting_msg(message):
-#     bot.send_message(message.chat.id, "Закончил прием сообщений")
-#     players = [922598615, 1722704753]
-#
-#     for user in players:
-#         bot.delete_state(user, message.chat.id)
-#
-#
-
-
-
-
-@bot.message_handler(content_types=['text', 'audio', 'voice', 'photo', 'video', 'document'], chat_types=['supergroup'])
+@bot.message_handler(content_types=CONTENT_TYPES, chat_types=['supergroup'])
 def deleting_messages(message):
-    print(1)
-    alive_players = get_alive_users(message.chat.id)
     user_id = message.from_user.id
-    print(alive_players)
+    group_chat_id = get_user_current_group_chat_id(user_id)
+    is_group_in_game = is_group_playing(group_chat_id)
 
-    if user_id not in alive_players:
-        print(2)
-        bot.delete_message(message.chat.id, message.message_id)
+    if is_group_in_game:
+        alive_players = get_alive_users(message.chat.id)
+        user_id = message.from_user.id
 
+        if user_id not in alive_players:
+            bot.delete_message(message.chat.id, message.message_id)
 
 
 if __name__ == "__main__":
