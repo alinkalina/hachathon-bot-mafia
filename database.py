@@ -140,6 +140,9 @@ def add_group(group_chat_id: int):
 def is_group_playing(group_chat_id: int) -> bool:
     sql = f'SELECT is_playing FROM groups WHERE group_chat_id = {group_chat_id};'
     result = get_from_db(sql)
+
+    if not result:
+        return False
     return bool(result[0][0])
 
 
@@ -211,7 +214,6 @@ def get_user_current_group_chat_id(user_chat_id: int) -> int | bool:
 
 
 # возвращает список chat_id пользователей, присоединившихся к игре
-# TODO использовать для раздачи ролей
 def get_players_list(group_chat_id: int) -> list[int]:
     current_session = get_group_current_session(group_chat_id)
     group_id = get_one_by_other('id', 'group_chat_id', group_chat_id, table_name='groups')
@@ -225,7 +227,6 @@ def get_players_list(group_chat_id: int) -> list[int]:
 
 
 # для изменения данных в games, param - название колонки, data - данные (роль текстом, chat_id юзера или 0/1 (жив/убит))
-# TODO использовать для записи роли
 def update_user_data(user_chat_id: int, group_chat_id: int, param: str, data: str | int | None):
     user_id = get_one_by_other('id', 'chat_id', user_chat_id, table_name='users')
     group_id = get_one_by_other('id', 'group_chat_id', group_chat_id, table_name='groups')
@@ -263,7 +264,6 @@ def transform_result(result: int, param: str) -> str | int:
 
 
 # список живых игроков
-# TODO использовать для дневного голосования
 def get_alive_users(group_chat_id: int) -> list[int]:
     chat_ids = get_players_list(group_chat_id)
     alive_users = []
@@ -275,7 +275,6 @@ def get_alive_users(group_chat_id: int) -> list[int]:
 
 
 # получение списка игроков с определённой ролью
-# TODO использовать для получения списка мафии
 def get_users_with_role(group_chat_id: int, role: str) -> list[int]:
     chat_ids = get_players_list(group_chat_id)
     users_with_role = []
