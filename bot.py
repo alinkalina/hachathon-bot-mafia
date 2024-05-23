@@ -176,11 +176,13 @@ def start_night_timer(message, delay=30):
         else:
             bot.send_message(group_chat_id, "Мафия не смогла договориться и никого не убила")
 
+        end_getting_messages(message)
         make_day_stage(message)
 
-    threading.Timer(delay, end_night_stage).start()
     bot.register_next_step_handler(message, mafia_chat)
-    threading.Timer(delay, end_getting_messages, args=(message,)).start()
+    threading.Timer(delay, end_night_stage).start()
+
+
 
 
 # функция ночной фазы
