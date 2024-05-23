@@ -107,6 +107,20 @@ def ready_handler(call):
         bot.edit_message_text(text=text, chat_id=c_id, message_id=m_id, reply_markup=markup)
 
 
+# функция чата мафии
+@bot.message_handler(func=lambda message: True, content_types=["text"], chat_types=["private"])
+def mafia_chat(message):
+    user_chat_id = message.from_user.id
+    group_chat_id = get_user_current_group_chat_id(user_chat_id)
+    user_role = get_user_data(user_chat_id, group_chat_id, "role")
+
+    if user_role == 2:
+        mafia_chat_ids = get_users_with_role(group_chat_id, 'Мафия')
+        for mafia_chat_id in mafia_chat_ids:
+            if mafia_chat_id != user_chat_id:
+                bot.send_message(mafia_chat_id, f"{message.from_user.username}: {message.text}")
+
+
 # подсчет голосов мафии
 def count_mafia_votes(group_chat_id):
     mafia_chat_ids = get_users_with_role(group_chat_id, 'Мафия')
