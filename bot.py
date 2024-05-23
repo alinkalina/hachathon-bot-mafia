@@ -119,6 +119,20 @@ def mafia_chat(message):
         for mafia_chat_id in mafia_chat_ids:
             if mafia_chat_id != user_chat_id:
                 bot.send_message(mafia_chat_id, f"{message.from_user.username}: {message.text}")
+    bot.register_next_step_handler(message, mafia_chat)
+
+
+# функция заканчивание чата
+def end_getting_messages(message):
+    user_chat_id = message.from_user.id
+    group_chat_id = get_user_current_group_chat_id(user_chat_id)
+    user_role = get_user_data(user_chat_id, group_chat_id, "role")
+
+    if user_role == "Мафия":
+        mafia_chat_ids = get_users_with_role(group_chat_id, 'Мафия')
+        for mafia_chat_id in mafia_chat_ids:
+            bot.send_message(mafia_chat_id, "Мафия закончила обсуждение.")
+            bot.clear_step_handler_by_chat_id(chat_id=mafia_chat_id)
 
 
 # подсчет голосов мафии
@@ -165,6 +179,8 @@ def start_night_timer(message, delay=30):
         make_day_stage(message)
 
     threading.Timer(delay, end_night_stage).start()
+    bot.register_next_step_handler(message, mafia_chat)
+    threading.Timer(delay, end_getting_messages, args=(message,)).start()
 
 
 # функция ночной фазы
