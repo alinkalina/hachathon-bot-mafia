@@ -10,8 +10,20 @@ from database import (add_user, add_group, is_group_playing, add_user_to_games, 
 
 import random
 import threading
+from telebot.storage import StateMemoryStorage
+from telebot import custom_filters
+from telebot.handler_backends import StatesGroup
 
-bot = telebot.TeleBot(token=BOT_TOKEN)
+
+class MyStates(StatesGroup):
+    message_to_delete = "message to delete"
+    mafia_chat = 'chat for mafia'
+
+
+storage = StateMemoryStorage()
+
+bot = telebot.TeleBot(token=BOT_TOKEN, state_storage=storage)
+bot.add_custom_filter(custom_filters.StateFilter(bot))
 
 
 @bot.message_handler(commands=["start"], chat_types=["supergroup"])
@@ -108,66 +120,40 @@ def ready_handler(call):
 
 
 # функция чата мафии
-@bot.message_handler(func=lambda message: True, content_types=["text"], chat_types=["private"])
+@bot.message_handler(state=MyStates.message_to_delete)
+def delete_forbidden_messages(message):
+    print('mafia chat')
+    user_chat_id = message.from_user.id
+    group_chat_id = get_user_current_group_chat_id(user_chat_id)
+
+    print(user_chat_id, message.chat.type)
+
+    if message.chat.type == 'supergroup':
+        bot.delete_message(group_chat_id, message.message_id)
+
+    print('чат')
+
+
+@bot.message_handler(state=MyStates.mafia_chat)
 def mafia_chat(message):
     user_chat_id = message.from_user.id
     group_chat_id = get_user_current_group_chat_id(user_chat_id)
-    user_role = get_user_data(user_chat_id, group_chat_id, "role")
 
-    if user_role == 'Мафия':
-        mafia_chat_ids = get_users_with_role(group_chat_id, 'Мафия')
-        for mafia_chat_id in mafia_chat_ids:
-            if mafia_chat_id != user_chat_id:
-                bot.send_message(mafia_chat_id, f"{message.from_user.username}: {message.text}")
-    bot.register_next_step_handler(message, mafia_chat)
-
-
-# функция заканчивание чата
-def end_getting_messages(message):
-    user_chat_id = message.from_user.id
-    group_chat_id = get_user_current_group_chat_id(user_chat_id)
-    user_role = get_user_data(user_chat_id, group_chat_id, "role")
-
-    if user_role == "Мафия":
-        mafia_chat_ids = get_users_with_role(group_chat_id, 'Мафия')
-        for mafia_chat_id in mafia_chat_ids:
-            bot.send_message(mafia_chat_id, "Мафия закончила обсуждение.")
-            bot.clear_step_handler_by_chat_id(chat_id=mafia_chat_id)
-
-
-# подсчет голосов мафии
-def count_mafia_votes(group_chat_id):
     mafia_chat_ids = get_users_with_role(group_chat_id, 'Мафия')
-
-    votes = {}
-
     for mafia_chat_id in mafia_chat_ids:
-        choice = get_user_data(mafia_chat_id, group_chat_id, "choice")
-        if choice in votes:
-            votes[choice] += 1
-        else:
-            votes[choice] = 1
-    if votes.values():
-        max_votes = max(votes.values())
-
-    else:
-        max_votes = 0
-
-    killed_player = [player for player, votes in votes.items() if votes == max_votes]
-
-    if len(killed_player) <= 1:
-        killed_player = None
-    else:
-        killed_player = killed_player[0]
-
-    return killed_player
+        if mafia_chat_id != user_chat_id:
+            bot.send_message(mafia_chat_id, f"{message.from_user.username}: {message.text}")
 
 
 # функция ночного таймера
-def start_night_timer(message, delay=30):
+def start_night_timer(message, delay=15):
     def end_night_stage():
-        group_chat_id = message.chat.id
-        killed_player = count_mafia_votes(group_chat_id)
+        for alive_chat_id in alive_players:
+            # bot.send_message(group_chat_id, "Мафия закончила обсуждение.")
+            bot.delete_state(chat_id, chat_id)
+            bot.delete_state(chat_id, group_chat_id)
+
+        killed_player = count_votes(group_chat_id, mafia_chat_ids)
 
         if killed_player is not None:
             update_user_data(killed_player, group_chat_id, "killed", 1)
@@ -176,13 +162,19 @@ def start_night_timer(message, delay=30):
         else:
             bot.send_message(group_chat_id, "Мафия не смогла договориться и никого не убила")
 
-        end_getting_messages(message)
         make_day_stage(message)
 
-    bot.register_next_step_handler(message, mafia_chat)
+    group_chat_id = message.chat.id
+
+    alive_players = get_alive_users(group_chat_id)
+    for chat_id in alive_players:
+        bot.set_state(chat_id, MyStates.message_to_delete, group_chat_id)
+
+    mafia_chat_ids = get_users_with_role(group_chat_id, 'Мафия')
+    for mafia_chat_id in mafia_chat_ids:
+        bot.set_state(mafia_chat_id, MyStates.mafia_chat, mafia_chat_id)
+
     threading.Timer(delay, end_night_stage).start()
-
-
 
 
 # функция ночной фазы
@@ -203,7 +195,7 @@ def make_night_stage(message):
     for mafia_chat_id in mafia_chat_ids:
         markup = InlineKeyboardMarkup()
         for user_chat_id in user_chat_ids:
-            if user_chat_id != mafia_chat_id:
+            if user_chat_id != mafia_chat_id and user_chat_id not in mafia_chat_ids:
                 btn = InlineKeyboardButton(text=bot.get_chat_member(group_chat_id, user_chat_id).user.username,
                                            callback_data=user_chat_id)
                 markup.add(btn)
@@ -241,7 +233,7 @@ def assign_roles(group_chat_id):
 
 
 # функция таймера для начала игры
-def start_game_timer(message, delay=30):
+def start_game_timer(message, sent_message, delay=10):
     def timer_func():
         joined_players = len(get_players_list(message.chat.id))
 
@@ -254,7 +246,7 @@ def start_game_timer(message, delay=30):
             assign_roles(message.chat.id)
             make_night_stage(message)
 
-        bot.delete_message(message.chat.id, message.message_id)
+        bot.delete_message(message.chat.id, sent_message.message_id)
 
     threading.Timer(delay, timer_func).start()
 
@@ -281,7 +273,7 @@ def start_game_handler(message):
         markup.add(play_button)
 
         sent_message = bot.send_message(c_id, "Нажмите на кнопку, когда будете готовы!", reply_markup=markup)
-        start_game_timer(sent_message)
+        start_game_timer(message, sent_message)
 
 
 @bot.callback_query_handler(func=lambda call: call.data.isdigit())
@@ -291,6 +283,7 @@ def process_user_votes(call):
 
     voted_user_id = call.from_user.id
     chosen_user_id = call.data
+    print(voted_user_id, chosen_user_id)
 
     group_chat_id = get_user_current_group_chat_id(voted_user_id)
 
@@ -302,8 +295,8 @@ def process_user_votes(call):
     return_to_group_btn = InlineKeyboardButton(text="Вернуться в группу", url=link_to_group)
     return_to_group_keyboard = InlineKeyboardMarkup().add(return_to_group_btn)
 
-    chosen_user_name = bot.get_chat_member(c_id, chosen_user_id).user.username
-    bot.edit_message_text(chat_id=c_id, message_id=m_id, text=f"Ваш выбор: {chosen_user_name}",
+    # chosen_user_name = bot.get_chat_member(c_id, chosen_user_id).user.username
+    bot.edit_message_text(chat_id=c_id, message_id=m_id, text=f"Ваш выбор: {chosen_user_id}",
                           reply_markup=return_to_group_keyboard)
 
     mafia_chat_ids = get_users_with_role(group_chat_id, 'Мафия')
@@ -313,22 +306,24 @@ def process_user_votes(call):
         bot.send_message(group_chat_id, f"Игрок {voted_user_name} сделал свой выбор.")
 
 
-def count_daily_votes(group_chat_id):
-    alive_chat_ids = get_alive_users(group_chat_id)
-
+def count_votes(group_chat_id, voted_users):
     votes = {}
 
-    for alive_chat_id in alive_chat_ids:
-        choice = get_user_data(alive_chat_id, group_chat_id, "choice")
-        if choice in votes:
-            votes[choice] += 1
-        else:
-            votes[choice] = 1
+    for chat_id in voted_users:
+        choice = get_user_data(chat_id, group_chat_id, "choice")
+        if choice is not None:
+            if choice in votes:
+                votes[choice] += 1
+            else:
+                votes[choice] = 1
+    if votes.values():
+        max_votes = max(votes.values())
+    else:
+        max_votes = 0
 
-    max_votes = max(votes.values())
     killed_player = [player for player, votes in votes.items() if votes == max_votes]
 
-    if len(killed_player) > 1:
+    if len(killed_player) != 1:
         killed_player = None
     else:
         killed_player = killed_player[0]
@@ -336,14 +331,15 @@ def count_daily_votes(group_chat_id):
     return killed_player
 
 
-def start_voting_timer(message, delay=30):
+def start_voting_timer(message, delay=10):
     def timer_func():
         c_id = message.chat.id
 
         bot.send_message(c_id, "Голосование завершено!")
 
         # получаем статус и user_id
-        voting_result = count_daily_votes(c_id)
+        alive_user_ids = get_alive_users(c_id)
+        voting_result = count_votes(c_id, alive_user_ids)
 
         if not voting_result:
             bot.send_message(c_id, "Жители решили никого не убивать сегодня.")
@@ -365,7 +361,6 @@ def start_voting_timer(message, delay=30):
 
             update_user_data(voting_result, message.chat.id, "killed", 1)
 
-        alive_user_ids = get_alive_users(c_id)
         mafia_chat_ids = get_users_with_role(c_id, 'Мафия')
 
         pieceful_player_ids = sorted(list(set(alive_user_ids) - set(mafia_chat_ids)))
@@ -406,7 +401,7 @@ def make_voting(message, alive_users):
     start_voting_timer(message)
 
 
-def start_discussion_timer(message, alive_users, delay=180):
+def start_discussion_timer(message, alive_users, delay=20):
     def timer_func():
         make_voting(message, alive_users)
 
@@ -477,6 +472,61 @@ def make_results(chat_id, winners_team, winners_list):
     bot.send_message(chat_id, text)
 
     change_group_state(chat_id, 0)
+
+
+@bot.message_handler(commands=['delete'], chat_types=['supergroup'])
+def deleting_state(message):
+    change_group_state(message.chat.id, 0)
+
+
+
+
+
+#
+#
+#
+# @bot.message_handler(state=MyStates.get_message)
+# def answer_message(message):
+#     players = [922598615, 1722704753]
+#
+#     bot.send_message(message.chat.id, f"Получил ваше сообщение {message.from_user.id}")
+#
+#
+# @bot.message_handler(commands=["test"])  # Начинаем отсюда
+# def handle_message(message):
+#     players = [922598615, 1722704753]
+#
+#     for user in players:
+#         bot.set_state(user, MyStates.get_message, message.chat.id)
+#
+#     bot.send_message(message.chat.id, "Можете начать обсуждение")
+#
+#     threading.Timer(7, end_getting_msg, [message]).start()
+#
+#
+# def end_getting_msg(message):
+#     bot.send_message(message.chat.id, "Закончил прием сообщений")
+#     players = [922598615, 1722704753]
+#
+#     for user in players:
+#         bot.delete_state(user, message.chat.id)
+#
+#
+
+
+
+
+@bot.message_handler(content_types=['text', 'audio', 'voice', 'photo', 'video', 'document'], chat_types=['supergroup'])
+def deleting_messages(message):
+    print(1)
+    alive_players = get_alive_users(message.chat.id)
+    user_id = message.from_user.id
+    print(alive_players)
+
+    if user_id not in alive_players:
+        print(2)
+        bot.delete_message(message.chat.id, message.message_id)
+
 
 
 if __name__ == "__main__":

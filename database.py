@@ -203,7 +203,6 @@ def get_user_current_group_chat_id(user_chat_id: int) -> int | bool:
     result = get_from_db(sql)
     if not result:
         return False
-    print(result)
     group_id, session = result[0]
     group_chat_id = get_one_by_other('group_chat_id', 'id', group_id, table_name='groups')
     if is_group_playing(group_chat_id) and get_group_current_session(group_chat_id) == session:
