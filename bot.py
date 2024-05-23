@@ -288,23 +288,27 @@ def process_user_votes(call):
     c_id = call.message.chat.id
     m_id = call.message.message_id
 
-    voted_user_id = call.from_user.id
-    chosen_user_id = int(call.data)
+    try:
 
-    group_chat_id = get_user_current_group_chat_id(voted_user_id)
+        voted_user_id = call.from_user.id
+        chosen_user_id = int(call.data)
 
-    update_user_data(voted_user_id, group_chat_id, "choice", chosen_user_id)
+        group_chat_id = get_user_current_group_chat_id(voted_user_id)
 
-    link_to_group = get_group_link(voted_user_id)
+        update_user_data(voted_user_id, group_chat_id, "choice", chosen_user_id)
 
-    # создаем кнопку для перехода в группу
-    return_to_group_btn = InlineKeyboardButton(text="Вернуться в группу", url=link_to_group)
-    return_to_group_keyboard = InlineKeyboardMarkup().add(return_to_group_btn)
+        link_to_group = get_group_link(voted_user_id)
 
-    chosen_user_name = bot.get_chat_member(group_chat_id, chosen_user_id).user.username
+        # создаем кнопку для перехода в группу
+        return_to_group_btn = InlineKeyboardButton(text="Вернуться в группу", url=link_to_group)
+        return_to_group_keyboard = InlineKeyboardMarkup().add(return_to_group_btn)
 
-    bot.edit_message_text(chat_id=c_id, message_id=m_id, text=f"Ваш выбор: {chosen_user_name}",
-                          reply_markup=return_to_group_keyboard)
+        chosen_user_name = bot.get_chat_member(group_chat_id, chosen_user_id).user.username
+
+        bot.edit_message_text(chat_id=c_id, message_id=m_id, text=f"Ваш выбор: {chosen_user_name}",
+                              reply_markup=return_to_group_keyboard)
+    except IndexError:
+        bot.edit_message_text(chat_id=c_id, message_id=m_id, text=f"Кажется, кнопка устарела", reply_markup=None)
 
 
 def count_votes(group_chat_id, voted_users):
