@@ -114,7 +114,7 @@ def mafia_chat(message):
     group_chat_id = get_user_current_group_chat_id(user_chat_id)
     user_role = get_user_data(user_chat_id, group_chat_id, "role")
 
-    if user_role == 2:
+    if user_role == 'Мафия':
         mafia_chat_ids = get_users_with_role(group_chat_id, 'Мафия')
         for mafia_chat_id in mafia_chat_ids:
             if mafia_chat_id != user_chat_id:
