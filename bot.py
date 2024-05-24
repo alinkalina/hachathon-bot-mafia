@@ -174,7 +174,7 @@ def start_commissar_timer(message, delay=30):
         check_commissar(message)
         make_day_stage(message)
 
-        link_to_group = get_group_link(comissar_chat_id)
+        link_to_group = get_group_link(commissar_chat_id)
 
         # создаем кнопку для перехода в группу
         return_to_group_btn = InlineKeyboardButton(text="Вернуться в группу", url=link_to_group)
@@ -183,7 +183,7 @@ def start_commissar_timer(message, delay=30):
         # with bot.retrieve_data(mafia_chat_id, mafia_chat_id) as data:
         #     msg_with_button_id = data["msg_with_button_id"]
         #
-        #     bot.edit_message_text(chat_id=comissar_chat_id, message_id=msg_with_button_id,
+        #     bot.edit_message_text(chat_id=commissar_chat_id, message_id=msg_with_button_id,
         #                           text="Возвращайтесь в группу",
         #                           reply_markup=return_to_group_keyboard)
 
@@ -195,7 +195,7 @@ def start_commissar_timer(message, delay=30):
     for chat_id in alive_players:
         bot.set_state(chat_id, MyStates.message_to_delete, group_chat_id)
 
-    comissar_chat_id = get_users_with_role(group_chat_id, 'Коммисар')
+    commissar_chat_id = get_users_with_role(group_chat_id, 'Комиссар')
 
     threading.Timer(delay, end_commissar_stage).start()
 
