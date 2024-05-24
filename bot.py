@@ -73,7 +73,7 @@ def get_group_link(user_id):
     group_id = get_user_current_group_chat_id(user_id)
 
     if group_id:
-        link_to_group = bot.export_chat_invite_link(chat_id=group_id)  # Создаем ссылку для группы
+        link_to_group = bot.create_chat_invite_link(chat_id=group_id).invite_link  # Создаем ссылку для группы
 
         return link_to_group
 
@@ -131,22 +131,6 @@ def ready_handler(call):
         bot.edit_message_text(text=text, chat_id=c_id, message_id=m_id, reply_markup=markup)
 
 
-# функция для проверки комиссара
-def check_commissar(message):
-    user_chat_id = message.from_user.id
-    group_chat_id = get_user_current_group_chat_id(user_chat_id)
-
-    chosen_player_id = get_user_data(user_chat_id, group_chat_id, "choice")
-    chosen_player_role = get_user_data(chosen_player_id, group_chat_id, "role")
-
-    if chosen_player_role == "Мафия":
-        bot.send_message(user_chat_id,
-                         f"Игрок {bot.get_chat_member(group_chat_id, chosen_player_id).user.username} - мафия!")
-    else:
-        bot.send_message(user_chat_id,
-                         f"Игрок {bot.get_chat_member(group_chat_id, chosen_player_id).user.username} - не мафия!")
-
-
 # функция чата мафии
 @bot.message_handler(state=MyStates.message_to_delete)
 def delete_forbidden_messages(message):
@@ -171,37 +155,74 @@ def mafia_chat(message):
 # таймер для комиссара
 def start_commissar_timer(message, delay=30):
     def end_commissar_stage():
-        check_commissar(message)
-        make_day_stage(message)
 
-        link_to_group = get_group_link(commissar_chat_id)
+        if commissar_chat_id in alive_players:
 
-        # создаем кнопку для перехода в группу
-        return_to_group_btn = InlineKeyboardButton(text="Вернуться в группу", url=link_to_group)
-        return_to_group_keyboard = InlineKeyboardMarkup().add(return_to_group_btn)
+            link_to_group = get_group_link(commissar_chat_id)
 
-        # with bot.retrieve_data(mafia_chat_id, mafia_chat_id) as data:
-        #     msg_with_button_id = data["msg_with_button_id"]
-        #
-        #     bot.edit_message_text(chat_id=commissar_chat_id, message_id=msg_with_button_id,
-        #                           text="Возвращайтесь в группу",
-        #                           reply_markup=return_to_group_keyboard)
+            # создаем кнопку для перехода в группу
+            return_to_group_btn = InlineKeyboardButton(text="Вернуться в группу", url=link_to_group)
+            return_to_group_keyboard = InlineKeyboardMarkup().add(return_to_group_btn)
+
+            with bot.retrieve_data(commissar_chat_id, commissar_chat_id) as data:
+                msg_with_button_id = data["msg_with_button_id"]
+
+                bot.edit_message_text(chat_id=commissar_chat_id, message_id=msg_with_button_id,
+                                      text="Возвращайтесь в группу",
+                                      reply_markup=return_to_group_keyboard)
+
+            bot.delete_state(commissar_chat_id, commissar_chat_id)
+
+        bot.send_message(group_chat_id, "Комиссар проверил игрока")
+
+        for alive_chat_id in alive_players:
+            bot.delete_state(alive_chat_id, group_chat_id)
+
+        mafia_chat_ids = get_users_with_role(group_chat_id, 'Мафия')
+        killed_player = count_votes(group_chat_id, mafia_chat_ids)
+
+        if killed_player is not None:
+            update_user_data(killed_player, group_chat_id, "killed", 1)
+            bot.send_message(group_chat_id,
+                             f"Мафия убила игрока {bot.get_chat_member(group_chat_id, killed_player).user.username}")
+        else:
+            bot.send_message(group_chat_id, "Мафия не смогла договориться и никого не убила")
 
         make_day_stage(message)
 
     group_chat_id = message.chat.id
-
     alive_players = get_alive_users(group_chat_id)
+
+    return_to_private_btn = InlineKeyboardButton(text="Чат с ботом", url=LINK_TO_BOT)
+    return_to_private_keyboard = InlineKeyboardMarkup().add(return_to_private_btn)
+
+    bot.send_message(group_chat_id, "Комиссар, просыпайся и проверь игрока!",
+                     reply_markup=return_to_private_keyboard)
+
+    commissar_chat_id = get_users_with_role(group_chat_id, 'Комиссар')[0]
+    if commissar_chat_id in alive_players:
+        markup = InlineKeyboardMarkup()
+        for user_chat_id in alive_players:
+            if user_chat_id != commissar_chat_id:
+                btn = InlineKeyboardButton(text=bot.get_chat_member(group_chat_id, user_chat_id).user.username,
+                                           callback_data=f'commissar {user_chat_id}')
+                markup.add(btn)
+
+        msg_with_button = bot.send_message(commissar_chat_id, "Проверьте роль игрока!", reply_markup=markup)
+
+        bot.set_state(commissar_chat_id, MyStates.msg_with_buttons, commissar_chat_id)
+
+        with bot.retrieve_data(commissar_chat_id, commissar_chat_id) as data:
+            data['msg_with_button_id'] = msg_with_button.message_id
+
     for chat_id in alive_players:
         bot.set_state(chat_id, MyStates.message_to_delete, group_chat_id)
-
-    commissar_chat_id = get_users_with_role(group_chat_id, 'Комиссар')
 
     threading.Timer(delay, end_commissar_stage).start()
 
 
 # функция ночного таймера
-def start_night_timer(message, delay=60):
+def start_night_timer(message, delay=30):
     def end_night_stage():
 
         for mafia_chat_id in mafia_chat_ids:
@@ -223,18 +244,9 @@ def start_night_timer(message, delay=60):
                                               reply_markup=return_to_group_keyboard)
 
         for alive_chat_id in alive_players:
-            # bot.send_message(group_chat_id, "Мафия закончила обсуждение.")
             bot.delete_state(alive_chat_id, alive_chat_id)
-            bot.delete_state(alive_chat_id, group_chat_id)
 
-        killed_player = count_votes(group_chat_id, mafia_chat_ids)
-
-        if killed_player is not None:
-            update_user_data(killed_player, group_chat_id, "killed", 1)
-            bot.send_message(group_chat_id,
-                             f"Мафия убила игрока {bot.get_chat_member(group_chat_id, killed_player).user.username}")
-        else:
-            bot.send_message(group_chat_id, "Мафия не смогла договориться и никого не убила")
+        bot.send_message(group_chat_id, "Мафия закончила обсуждение.")
 
         start_commissar_timer(message)
 
@@ -274,7 +286,7 @@ def make_night_stage(message):
         for user_chat_id in user_chat_ids:
             if user_chat_id != mafia_chat_id and user_chat_id not in mafia_chat_ids:
                 btn = InlineKeyboardButton(text=bot.get_chat_member(group_chat_id, user_chat_id).user.username,
-                                           callback_data=user_chat_id)
+                                           callback_data=f'mafia {user_chat_id}')
                 markup.add(btn)
         if mafia_chat_id in user_chat_ids:
             msg_with_button = bot.send_message(mafia_chat_id, "Выберите жертву!", reply_markup=markup)
@@ -283,21 +295,6 @@ def make_night_stage(message):
 
             with bot.retrieve_data(mafia_chat_id, mafia_chat_id) as data:
                 data['msg_with_button_id'] = msg_with_button.message_id
-
-    commissar_chat_id = get_users_with_role(group_chat_id, 'Комиссар')[0]
-    markup = InlineKeyboardMarkup()
-    for user_chat_id in user_chat_ids:
-        if user_chat_id != commissar_chat_id:
-            btn = InlineKeyboardButton(text=bot.get_chat_member(group_chat_id, user_chat_id).user.username,
-                                       callback_data=user_chat_id)
-            markup.add(btn)
-    if commissar_chat_id in user_chat_ids:
-        msg_with_button = bot.send_message(commissar_chat_id, "Проверьте роль игрока!", reply_markup=markup)
-
-        bot.set_state(commissar_chat_id, MyStates.msg_with_buttons, commissar_chat_id)
-
-        with bot.retrieve_data(commissar_chat_id, commissar_chat_id) as data:
-            data['msg_with_button_id'] = msg_with_button.message_id
 
     start_night_timer(message)
 
@@ -371,15 +368,16 @@ def start_game_handler(message):
         start_game_timer(message, sent_message)
 
 
-@bot.callback_query_handler(func=lambda call: call.data.isdigit())
+@bot.callback_query_handler(func=lambda call: call.data.split()[1].isdigit())
 def process_user_votes(call):
     c_id = call.message.chat.id
     m_id = call.message.message_id
+    data = call.data.split()
 
     try:
 
         voted_user_id = call.from_user.id
-        chosen_user_id = int(call.data)
+        chosen_user_id = int(data[1])
 
         group_chat_id = get_user_current_group_chat_id(voted_user_id)
 
@@ -396,8 +394,16 @@ def process_user_votes(call):
         bot.edit_message_text(chat_id=c_id, message_id=m_id, text=f"Ваш выбор: {chosen_user_name}",
                               reply_markup=return_to_group_keyboard)
 
+        if data[0] == 'commissar':
+            checked_user_role = get_user_data(data[1], group_chat_id, 'role')
+            if checked_user_role == "Мафия":
+                bot.send_message(c_id, f"Игрок {chosen_user_name} - мафия!")
+            else:
+                bot.send_message(c_id,
+                                 f"Игрок {chosen_user_name} - не мафия!")
+
     except IndexError:
-        bot.edit_message_text(chat_id=c_id, message_id=m_id, text=f"Кажется, кнопка устарела", reply_markup=None)
+        bot.edit_message_text(chat_id=c_id, message_id=m_id, text=f"Кажется, кнопка устарела")
 
 
 def count_votes(group_chat_id, voted_users):
@@ -495,7 +501,7 @@ def make_voting(message, alive_users):
     alive_players_keyboard = InlineKeyboardMarkup()
 
     for user_info in alive_users:  # создаем клавиатуру, где у каждой кнопки text - имя юзера, data - его тг айди
-        btn = InlineKeyboardButton(text=user_info[1], callback_data=user_info[0])
+        btn = InlineKeyboardButton(text=user_info[1], callback_data=f'all {user_info[0]}')
         alive_players_keyboard.add(btn)
 
     return_to_private_btn = InlineKeyboardButton(text="Чат с ботом", url=LINK_TO_BOT)

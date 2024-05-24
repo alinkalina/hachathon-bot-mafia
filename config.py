@@ -8,7 +8,7 @@ load_dotenv()
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 
-LINK_TO_BOT = "https://t.me/test_hachaton_mafia_bot"
+LINK_TO_BOT = "https://t.me/hackathon_mafia_bot"
 
 COMMANDS = [BotCommand(command="start", description="Запуск бота"),
             BotCommand(command="rules", description="Подробные правила игры в мафию"),
