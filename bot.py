@@ -131,6 +131,22 @@ def ready_handler(call):
         bot.edit_message_text(text=text, chat_id=c_id, message_id=m_id, reply_markup=markup)
 
 
+# функция для проверки комиссара
+def check_commissar(message):
+    user_chat_id = message.from_user.id
+    group_chat_id = get_user_current_group_chat_id(user_chat_id)
+
+    chosen_player_id = get_user_data(user_chat_id, group_chat_id, "choice")
+    chosen_player_role = get_user_data(chosen_player_id, group_chat_id, "role")
+
+    if chosen_player_role == "Мафия":
+        bot.send_message(user_chat_id,
+                         f"Игрок {bot.get_chat_member(group_chat_id, chosen_player_id).user.username} - мафия!")
+    else:
+        bot.send_message(user_chat_id,
+                         f"Игрок {bot.get_chat_member(group_chat_id, chosen_player_id).user.username} - мирный житель!")
+
+
 # функция чата мафии
 @bot.message_handler(state=MyStates.message_to_delete)
 def delete_forbidden_messages(message):
@@ -150,6 +166,38 @@ def mafia_chat(message):
     for mafia_chat_id in mafia_chat_ids:
         if mafia_chat_id != user_chat_id:
             bot.send_message(mafia_chat_id, f"{message.from_user.username}: {message.text}")
+
+
+# таймер для комиссара
+def start_commissar_timer(message, delay=30):
+    def end_commissar_stage():
+        check_commissar(message)
+        make_day_stage(message)
+
+        link_to_group = get_group_link(comissar_chat_id)
+
+        # создаем кнопку для перехода в группу
+        return_to_group_btn = InlineKeyboardButton(text="Вернуться в группу", url=link_to_group)
+        return_to_group_keyboard = InlineKeyboardMarkup().add(return_to_group_btn)
+
+        with bot.retrieve_data(mafia_chat_id, mafia_chat_id) as data:
+            msg_with_button_id = data["msg_with_button_id"]
+
+            bot.edit_message_text(chat_id=comissar_chat_id, message_id=msg_with_button_id,
+                                  text="Возвращайтесь в группу",
+                                  reply_markup=return_to_group_keyboard)
+
+        make_day_stage(message)
+
+    group_chat_id = message.chat.id
+
+    alive_players = get_alive_users(group_chat_id)
+    for chat_id in alive_players:
+        bot.set_state(chat_id, MyStates.message_to_delete, group_chat_id)
+
+    comissar_chat_id = get_users_with_role(group_chat_id, 'Коммисар')
+
+    threading.Timer(delay, end_commissar_stage).start()
 
 
 # функция ночного таймера
@@ -188,7 +236,7 @@ def start_night_timer(message, delay=60):
         else:
             bot.send_message(group_chat_id, "Мафия не смогла договориться и никого не убила")
 
-        make_day_stage(message)
+        start_commissar_timer(message)
 
     group_chat_id = message.chat.id
 
@@ -236,6 +284,21 @@ def make_night_stage(message):
             with bot.retrieve_data(mafia_chat_id, mafia_chat_id) as data:
                 data['msg_with_button_id'] = msg_with_button.message_id
 
+    commissar_chat_id = get_users_with_role(group_chat_id, 'Комиссар')
+    markup = InlineKeyboardMarkup()
+    for user_chat_id in user_chat_ids:
+        if user_chat_id != commissar_chat_id:
+            btn = InlineKeyboardButton(text=bot.get_chat_member(group_chat_id, user_chat_id).user.username,
+                                       callback_data=user_chat_id)
+            markup.add(btn)
+    if commissar_chat_id in user_chat_ids:
+        msg_with_button = bot.send_message(commissar_chat_id, "Проверьте роль игрока!", reply_markup=markup)
+
+        bot.set_state(commissar_chat_id, MyStates.msg_with_buttons, commissar_chat_id)
+
+        with bot.retrieve_data(commissar_chat_id, commissar_chat_id) as data:
+            data['msg_with_button_id'] = msg_with_button.message_id
+
     start_night_timer(message)
 
 
@@ -244,7 +307,7 @@ def assign_roles(group_chat_id):
     user_chat_ids = get_players_list(group_chat_id)
     num_players = len(user_chat_ids)
     num_mafia = num_players // 3
-    num_citizens = num_players - num_mafia
+    num_citizens = num_players - num_mafia - 1
 
     roles = []
     for role_index in range(len(ROLES)):
@@ -253,8 +316,7 @@ def assign_roles(group_chat_id):
             for i in range(num_mafia):
                 roles.append(role)
         elif role == "Комиссар":
-            pass
-            # roles.append(role_index + 1)
+            roles.append(role_index + 1)
         else:
             for i in range(num_citizens):
                 roles.append(role)
@@ -446,7 +508,7 @@ def make_voting(message, alive_users):
     for user_info in alive_users:
         user_id = user_info[0]
         msg_with_button = bot.send_message(user_id, "Пришло время кого-нибудь изгнать! "
-                                           "У вас есть 30 секунд на то, чтобы сделать выбор",
+                                                    "У вас есть 30 секунд на то, чтобы сделать выбор",
                                            reply_markup=alive_players_keyboard)
 
         bot.set_state(user_id, MyStates.msg_with_buttons, user_id)
