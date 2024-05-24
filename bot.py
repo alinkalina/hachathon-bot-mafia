@@ -144,7 +144,7 @@ def check_commissar(message):
                          f"Игрок {bot.get_chat_member(group_chat_id, chosen_player_id).user.username} - мафия!")
     else:
         bot.send_message(user_chat_id,
-                         f"Игрок {bot.get_chat_member(group_chat_id, chosen_player_id).user.username} - мирный житель!")
+                         f"Игрок {bot.get_chat_member(group_chat_id, chosen_player_id).user.username} - не мафия!")
 
 
 # функция чата мафии
