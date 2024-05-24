@@ -115,7 +115,7 @@ def ready_handler(call):
         ready_user_names = []
 
         for user_id in ready_user_ids:
-            user_name = bot.get_chat_member(c_id, user_id).user.username
+            user_name = str(bot.get_chat_member(c_id, user_id).user.username)
             ready_user_names.append(user_name)
 
         markup = InlineKeyboardMarkup()
@@ -204,7 +204,7 @@ def start_commissar_timer(message, delay=30):
         markup = InlineKeyboardMarkup()
         for user_chat_id in alive_players:
             if user_chat_id != commissar_chat_id:
-                btn = InlineKeyboardButton(text=bot.get_chat_member(group_chat_id, user_chat_id).user.username,
+                btn = InlineKeyboardButton(text=str(bot.get_chat_member(group_chat_id, user_chat_id).user.username),
                                            callback_data=f'commissar {user_chat_id}')
                 markup.add(btn)
 
@@ -285,7 +285,7 @@ def make_night_stage(message):
         markup = InlineKeyboardMarkup()
         for user_chat_id in user_chat_ids:
             if user_chat_id != mafia_chat_id and user_chat_id not in mafia_chat_ids:
-                btn = InlineKeyboardButton(text=bot.get_chat_member(group_chat_id, user_chat_id).user.username,
+                btn = InlineKeyboardButton(text=str(bot.get_chat_member(group_chat_id, user_chat_id).user.username),
                                            callback_data=f'mafia {user_chat_id}')
                 markup.add(btn)
         if mafia_chat_id in user_chat_ids:
@@ -389,7 +389,7 @@ def process_user_votes(call):
         return_to_group_btn = InlineKeyboardButton(text="Вернуться в группу", url=link_to_group)
         return_to_group_keyboard = InlineKeyboardMarkup().add(return_to_group_btn)
 
-        chosen_user_name = bot.get_chat_member(group_chat_id, chosen_user_id).user.username
+        chosen_user_name = str(bot.get_chat_member(group_chat_id, chosen_user_id).user.username)
 
         bot.edit_message_text(chat_id=c_id, message_id=m_id, text=f"Ваш выбор: {chosen_user_name}",
                               reply_markup=return_to_group_keyboard)
@@ -540,7 +540,7 @@ def make_day_stage(message):
     for user_id in alive_user_ids:
         update_user_data(user_id, c_id, "choice", None)
 
-        user_name = bot.get_chat_member(c_id, user_id).user.username
+        user_name = str(bot.get_chat_member(c_id, user_id).user.username)
         alive_user_names.append(user_name)  # добавляем имена пользователей в список
 
     mafia_chat_ids = get_users_with_role(c_id, 'Мафия')
