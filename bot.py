@@ -310,8 +310,7 @@ def assign_roles(group_chat_id):
     num_citizens = num_players - num_mafia - 1
 
     roles = []
-    for role_index in range(len(ROLES)):
-        role = ROLES[role_index]
+    for role in ROLES:
         if role == "Мафия":
             for i in range(num_mafia):
                 roles.append(role)
