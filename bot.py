@@ -478,6 +478,8 @@ def start_voting_timer(message, delay=30):
 
             update_user_data(voting_result, message.chat.id, "killed", 1)
 
+        alive_user_ids = get_alive_users(c_id)
+
         mafia_chat_ids = get_users_with_role(c_id, 'Мафия')
 
         pieceful_player_ids = sorted(list(set(alive_user_ids) - set(mafia_chat_ids)))
