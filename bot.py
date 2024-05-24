@@ -284,7 +284,7 @@ def make_night_stage(message):
             with bot.retrieve_data(mafia_chat_id, mafia_chat_id) as data:
                 data['msg_with_button_id'] = msg_with_button.message_id
 
-    commissar_chat_id = get_users_with_role(group_chat_id, 'Комиссар')
+    commissar_chat_id = get_users_with_role(group_chat_id, 'Комиссар')[0]
     markup = InlineKeyboardMarkup()
     for user_chat_id in user_chat_ids:
         if user_chat_id != commissar_chat_id:
@@ -316,7 +316,7 @@ def assign_roles(group_chat_id):
             for i in range(num_mafia):
                 roles.append(role)
         elif role == "Комиссар":
-            roles.append(role_index + 1)
+            roles.append(role)
         else:
             for i in range(num_citizens):
                 roles.append(role)
