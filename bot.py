@@ -266,20 +266,6 @@ def start_commissar_timer(message):
 
         bot.send_message(group_chat_id, "Комиссар проверил игрока")
 
-        for alive_chat_id in alive_players:
-            bot.delete_state(alive_chat_id, group_chat_id)
-
-        mafia_chat_ids = get_users_with_role(group_chat_id, "Мафия")
-        killed_player = count_votes(group_chat_id, mafia_chat_ids)
-
-        if killed_player is not None:
-            update_user_data(killed_player, group_chat_id, "killed", 1)
-            bot.send_message(group_chat_id,
-                             f"Мафия убила игрока "
-                             f"{str(bot.get_chat_member(group_chat_id, killed_player).user.username)}")
-        else:
-            bot.send_message(group_chat_id, "Мафия не смогла договориться и никого не убила")
-
         make_day_stage(message)
 
     group_chat_id = message.chat.id
@@ -310,6 +296,70 @@ def start_commissar_timer(message):
         save_message_id(commissar_chat_id, msg_with_button)
 
     threading.Timer(COMMISSAR_DELAY, end_commissar_stage).start()
+
+
+def start_doctor_timer(message):
+    def end_doctor_stage():
+        group_chat_id = message.chat.id
+
+        if doctor_chat_id in alive_players:
+            group_link_keyboard = get_group_link_keyboard(doctor_chat_id)
+
+            with bot.retrieve_data(doctor_chat_id, doctor_chat_id) as data:
+                msg_with_button_id = data["msg_with_button_id"]
+
+                bot.edit_message_text(chat_id=doctor_chat_id, message_id=msg_with_button_id,
+                                      text="Возвращайтесь в группу",
+                                      reply_markup=group_link_keyboard)
+
+            bot.delete_state(doctor_chat_id, doctor_chat_id)
+
+        bot.send_message(group_chat_id, "Доктор вылечил игрока")
+
+        for alive_chat_id in alive_players:
+            bot.delete_state(alive_chat_id, group_chat_id)
+
+        mafia_chat_ids = get_users_with_role(group_chat_id, "Мафия")
+        killed_player = count_votes(group_chat_id, mafia_chat_ids)
+
+        # TODO сделать проверку на вылеченного игрока
+
+        if killed_player is not None:
+            update_user_data(killed_player, group_chat_id, "killed", 1)
+            bot.send_message(group_chat_id,
+                             f"Мафия убила игрока "
+                             f"{str(bot.get_chat_member(group_chat_id, killed_player).user.username)}")
+        else:
+            bot.send_message(group_chat_id, "Мафия не смогла договориться и никого не убила")
+
+        make_day_stage(message)
+
+    group_chat_id = message.chat.id
+    alive_players = get_alive_users(group_chat_id)
+
+    bot_link_keyboard = get_bot_link_keyboard()
+
+    bot.send_message(group_chat_id, "Доктор, просыпайся и вылечи игрока!",
+                     reply_markup=bot_link_keyboard)
+
+    doctor_chat_id = get_users_with_role(group_chat_id, 'Доктор')[0]
+
+    if doctor_chat_id in alive_players:
+        players_to_heal_keyboard = InlineKeyboardMarkup()
+
+        for alive_player_id in alive_players:  # создаем кнопки для доктора
+            if alive_player_id != doctor_chat_id:
+                player_to_check_name = str(bot.get_chat_member(group_chat_id, alive_player_id).user.username)
+
+                player_to_check_btn = InlineKeyboardButton(text=player_to_check_name,
+                                                           callback_data=f'doctor {alive_player_id}')
+
+                players_to_heal_keyboard.add(player_to_check_btn)
+
+        msg_with_button = bot.send_message(doctor_chat_id, "Вылечите игрока игрока!",
+                                           reply_markup=players_to_heal_keyboard)
+
+        save_message_id(doctor_chat_id, msg_with_button)
 
 
 # функция для удаления сообщений во время ночи
@@ -563,6 +613,10 @@ def process_user_votes(call):
 
             else:
                 bot.send_message(c_id, f"Игрок {chosen_user_name} - не мафия!")
+        elif voted_user_role == "doctor":
+            # TODO: добавить проверку на роль доктора
+            pass
+
 
     except IndexError:
         bot.edit_message_text(chat_id=c_id, message_id=m_id, text=f"Кажется, кнопка устарела")
