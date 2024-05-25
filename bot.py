@@ -34,7 +34,8 @@ def handle_group_start(message):
 
     bot_link_keyboard = get_bot_link_keyboard()
 
-    text = ("Привет! Я бот, позволяющий играть в мафию, где я буду ведущим. Для начала игры введите команду /start_game.\n\n"
+    text = ("Привет! Я бот, позволяющий играть в мафию, где я буду ведущим. "
+            "Для начала игры введите команду /start_game.\n\n"
             "Перед началом игры прошу вас убедиться, что все игроки написали мне /start в личные сообщения.\n\n")
 
     full_text = text + "<b>Правила:</b>\n" + SHORT_RULES  # добавляем краткие правила к приветственному сообщению
@@ -128,7 +129,8 @@ def start_game_timer(message, msg_with_button):
         num_joined_players = len(get_players_list(group_chat_id))
 
         if num_joined_players < MIN_NUM_PLAYERS:
-            bot.send_message(group_chat_id, "Недостаточно игроков для начала игры, начните набор заново")
+            bot.send_message(group_chat_id, "Недостаточно игроков для начала игры, начните набор заново.\n"
+                                            "Для этого используйте команду /start_game.")
 
             change_group_state(group_chat_id, 0)
 
@@ -181,7 +183,8 @@ def make_mafia_stage(message):
 
     bot_link_keyboard = get_bot_link_keyboard()
 
-    bot.send_message(group_chat_id, "Наступила ночь 🌙/n😎 Мафия, просыпайтесь, переходите в чат с ботом и выберите жертву!",
+    bot.send_message(group_chat_id, "Наступила ночь 🌙/n😎 "
+                                    "Мафия, просыпайтесь, переходите в чат с ботом и выберите жертву!",
                      reply_markup=bot_link_keyboard)
 
     player_number = 1
@@ -376,7 +379,8 @@ def start_doctor_timer(message):
             killed_player_name = str(bot.get_chat_member(group_chat_id, killed_player).user.username)
 
             if killed_player == last_healed_user:
-                bot.send_message(group_chat_id, "Наступил день ☀ Ночью мафия попыталась убить игрока, но его спас доктор!")
+                bot.send_message(group_chat_id, "Наступил день ☀ Ночью мафия попыталась убить игрока, "
+                                                "но его спас доктор!")
 
             else:
                 update_user_data(killed_player, group_chat_id, "killed", 1)
@@ -545,7 +549,9 @@ def start_voting_timer(message):
                                           reply_markup=group_link_keyboard)
 
         if not exiled_player:
-            bot.send_message(group_chat_id, "Голоса распределились равномерно, или никто не стал выгонять подозреваемого, поэтому после голосования все остались")
+            bot.send_message(group_chat_id, "Голоса распределились равномерно, "
+                                            "или никто не стал выгонять подозреваемого, "
+                                            "поэтому после голосования никто не был изгнан.")
 
         else:
             exiled_player_name = str(bot.get_chat_member(group_chat_id, exiled_player).user.username)
@@ -555,10 +561,10 @@ def start_voting_timer(message):
             exiled_player_role = get_user_data(exiled_player, group_chat_id, "role")
 
             if exiled_player_role.lower() == "мафия":
-                text += "Поздравляю, мирные! 🎉 Он был мафией!"  # не раскрываем роль полностью
+                text += "Поздравляю, мирные жители! 🎉 Он был мафией!"  # не раскрываем роль полностью
 
             else:
-                text += "Он не был мафией, и теперь шансы на победу мирных жителей ещё уменьшились..."
+                text += "Он не был мафией, и теперь шансы на победу мирных жителей стали на порядок меньше..."
 
             bot.send_message(group_chat_id, text)
 
@@ -688,6 +694,11 @@ def process_user_votes(call):
 
     except IndexError:
         bot.edit_message_text(chat_id=c_id, message_id=m_id, text=f"Кажется, кнопка устарела")
+
+
+@bot.message_handler(commands=["delete"])
+def delete_group_state(message):
+    change_group_state(message.chat.id, 0)
 
 
 @bot.message_handler(content_types=CONTENT_TYPES, chat_types=["supergroup"])
