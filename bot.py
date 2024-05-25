@@ -185,7 +185,8 @@ def make_mafia_stage(message):
     bot.send_message(group_chat_id, "Наступила ночь! Мафия, просыпайтесь и выберите жертву!",
                      reply_markup=bot_link_keyboard)
 
-    i = 1
+    player_number = 1
+
     for mafia_chat_id in mafia_chat_ids:
         players_to_kill_keyboard = InlineKeyboardMarkup()
 
@@ -193,11 +194,11 @@ def make_mafia_stage(message):
             if alive_player_id not in mafia_chat_ids:  # мафия не должна быть в этом списке
                 player_to_kill_name = str(bot.get_chat_member(group_chat_id, alive_player_id).user.username)
 
-                player_to_kill_btn = InlineKeyboardButton(text=f"{i}. {player_to_kill_name}",
+                player_to_kill_btn = InlineKeyboardButton(text=f"{player_number}. {player_to_kill_name}",
                                                           callback_data=f"mafia {alive_player_id}")
 
                 players_to_kill_keyboard.add(player_to_kill_btn)
-                i += 1
+                player_number += 1
 
         if len(mafia_chat_ids) > 1:  # если в игре больше одной мафии, добавляем для них чат
             bot.send_message(mafia_chat_id, "Даю вам минуту на то, чтобы сделать свой выбор!\n\n"
