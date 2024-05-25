@@ -1,6 +1,7 @@
 import os
 from dotenv import load_dotenv
 from telebot.types import BotCommand
+from telebot.handler_backends import StatesGroup, State
 
 load_dotenv()
 
@@ -16,6 +17,13 @@ COMMANDS = [BotCommand(command="start", description="Запуск бота"),
             BotCommand(command="delete", description="Закончить игру в группе")]
 
 CONTENT_TYPES = ["text", "audio", "document", "photo", "sticker", "video", "video_note", "voice"]
+
+
+class MyStates(StatesGroup):
+    message_to_delete = "message to delete"
+    mafia_chat = 'chat for mafia'
+    msg_with_buttons = State()
+
 
 # Игра
 
@@ -34,6 +42,17 @@ FULL_RULES = ("<b>Правила игры:</b>\n\n"
               "Мафия знает друг друга и действует сообща, определяя жертву ночью с помощью обсуждения в боте.\n\n"
               "<b>Мафия побеждает, когда количество мирных жителей меньше или равно количеству Мафии.</b>")
 
-MIN_PLAYERS = 6
+MIN_NUM_PLAYERS = 6
 
 ROLES = ['Мирный житель', 'Мафия', 'Комиссар']  # сюда будем записывать новые роли, и они автоматически добавятся в БД
+
+# таймеры
+START_GAME_DELAY = 30
+
+MAFIA_DELAY = 60
+
+COMMISSAR_DELAY = 30
+
+DISCUSSION_DELAY = 180
+
+VOTING_DELAY = 30
