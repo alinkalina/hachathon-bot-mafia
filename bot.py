@@ -189,17 +189,16 @@ def make_mafia_stage(message):
 
         for alive_player_id in alive_players:  # создаем клавиатуру для мафии
             if alive_player_id not in mafia_chat_ids:  # мафия не должна быть в этом списке
-                player_to_kill_name = bot.get_chat_member(group_chat_id, alive_player_id).user.username
+                player_to_kill_name = str(bot.get_chat_member(group_chat_id, alive_player_id).user.username)
 
                 player_to_kill_btn = InlineKeyboardButton(text=player_to_kill_name,
                                                           callback_data=f'mafia {alive_player_id}')
 
                 players_to_kill_keyboard.add(player_to_kill_btn)
 
-        if mafia_chat_id in alive_players:  # рассылаем живой мафии список игроков для убийства
-            msg_with_button = bot.send_message(mafia_chat_id, "Выберите жертву!", reply_markup=players_to_kill_keyboard)
+        msg_with_button = bot.send_message(mafia_chat_id, "Выберите жертву!", reply_markup=players_to_kill_keyboard)
 
-            save_message_id(mafia_chat_id, msg_with_button)
+        save_message_id(mafia_chat_id, msg_with_button)
 
     start_mafia_timer(message)
 
@@ -277,7 +276,8 @@ def start_commissar_timer(message):
         if killed_player is not None:
             update_user_data(killed_player, group_chat_id, "killed", 1)
             bot.send_message(group_chat_id,
-                             f"Мафия убила игрока {bot.get_chat_member(group_chat_id, killed_player).user.username}")
+                             f"Мафия убила игрока "
+                             f"{str(bot.get_chat_member(group_chat_id, killed_player).user.username)}")
         else:
             bot.send_message(group_chat_id, "Мафия не смогла договориться и никого не убила")
 
@@ -298,7 +298,7 @@ def start_commissar_timer(message):
 
         for alive_player_id in alive_players:  # создаем кнопки для комиссара
             if alive_player_id != commissar_chat_id:
-                player_to_check_name = bot.get_chat_member(group_chat_id, alive_player_id).user.username
+                player_to_check_name = str(bot.get_chat_member(group_chat_id, alive_player_id).user.username)
 
                 player_to_check_btn = InlineKeyboardButton(text=player_to_check_name,
                                                            callback_data=f'commissar {alive_player_id}')
@@ -352,12 +352,8 @@ def make_day_stage(message):
     for alive_player_id in alive_players:  # удаляем выбор игрока при наступлении дня
         update_user_data(alive_player_id, group_chat_id, "choice", None)
 
-    mafia_chat_ids = get_users_with_role(group_chat_id, 'Мафия')
-
-    pieceful_player_ids = sorted(list(set(alive_players) - set(mafia_chat_ids)))
-
     # проверяем, не закончилась ли игра
-    is_game_end = check_game_end(group_chat_id, pieceful_player_ids, mafia_chat_ids)
+    is_game_end = check_game_end(group_chat_id)
 
     if is_game_end:
         return
@@ -389,7 +385,7 @@ def make_voting(message):
     alive_players_keyboard = InlineKeyboardMarkup()
 
     for alive_player_id in alive_players:  # создаем список живых игроков для голосования
-        alive_player_name = bot.get_chat_member(group_chat_id, alive_player_id).user.username
+        alive_player_name = str(bot.get_chat_member(group_chat_id, alive_player_id).user.username)
 
         alive_players_btn = InlineKeyboardButton(text=alive_player_name, callback_data=f'all {alive_player_id}')
 
@@ -437,7 +433,7 @@ def start_voting_timer(message):
             bot.send_message(group_chat_id, "Жители решили никого не убивать сегодня.")
 
         else:
-            exiled_player_name = bot.get_chat_member(group_chat_id, exiled_player).user.username
+            exiled_player_name = str(bot.get_chat_member(group_chat_id, exiled_player).user.username)
 
             text = f"Сегодня был изгнан игрок {exiled_player_name}.\n\n"
 
@@ -453,24 +449,26 @@ def start_voting_timer(message):
 
             update_user_data(exiled_player, message.chat.id, "killed", 1)
 
-        mafia_chat_ids = get_users_with_role(group_chat_id, 'Мафия')
+            # проверяем, не закончилась ли игра
+            is_game_end = check_game_end(group_chat_id)
 
-        pieceful_player_ids = sorted(list(set(alive_players) - set(mafia_chat_ids)))
-
-        # проверяем, не закончилась ли игра
-        is_game_end = check_game_end(group_chat_id, pieceful_player_ids, mafia_chat_ids)
-
-        if is_game_end:
-            return
+            if is_game_end:
+                return
 
         make_mafia_stage(message)
 
     threading.Timer(VOTING_DELAY, end_voting).start()
 
 
-def check_game_end(group_chat_id, pieceful_player_ids, mafia_chat_ids):
+def check_game_end(group_chat_id):
     winners_list = []
     text = ""
+
+    alive_players = get_alive_users(group_chat_id)
+
+    mafia_chat_ids = get_users_with_role(group_chat_id, 'Мафия')
+
+    pieceful_player_ids = sorted(list(set(alive_players) - set(mafia_chat_ids)))
 
     if len(pieceful_player_ids) <= len(mafia_chat_ids):
         text = "Мафия выиграла!\n\n"
@@ -484,7 +482,7 @@ def check_game_end(group_chat_id, pieceful_player_ids, mafia_chat_ids):
         text += "Победившие игроки:\n"
 
         for i, user_id in enumerate(winners_list):
-            winner_name = bot.get_chat_member(group_chat_id, user_id).user.username
+            winner_name = str(bot.get_chat_member(group_chat_id, user_id).user.username)
 
             text += f"{i + 1}. {winner_name}\n"
 
@@ -522,7 +520,7 @@ def ready_handler(call):
                 "Присоединившиеся игроки:\n")
 
         for i, ready_user_id in enumerate(ready_user_ids):
-            ready_user_name = bot.get_chat_member(c_id, ready_user_id).user.username
+            ready_user_name = str(bot.get_chat_member(c_id, ready_user_id).user.username)
 
             text += f"{i + 1}. {ready_user_name}\n"
 
@@ -550,7 +548,7 @@ def process_user_votes(call):
 
         group_link_keyboard = get_group_link_keyboard(voted_user_id)
 
-        chosen_user_name = bot.get_chat_member(group_chat_id, chosen_user_id).user.username
+        chosen_user_name = str(bot.get_chat_member(group_chat_id, chosen_user_id).user.username)
 
         bot.edit_message_text(chat_id=c_id, message_id=m_id, text=f"Ваш выбор: {chosen_user_name}",
                               reply_markup=group_link_keyboard)
