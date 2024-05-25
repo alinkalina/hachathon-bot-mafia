@@ -183,7 +183,7 @@ def make_mafia_stage(message):
 
     bot_link_keyboard = get_bot_link_keyboard()
 
-    bot.send_message(group_chat_id, "Наступила ночь 🌙/n😎 "
+    bot.send_message(group_chat_id, "🌙 Наступила ночь! 🌙\n\n"
                                     "🤵🏻 Мафия, просыпайтесь, переходите в чат с ботом и выберите жертву!",
                      reply_markup=bot_link_keyboard)
 
@@ -485,7 +485,7 @@ def make_day_stage(message):
 
     bot.send_message(group_chat_id, text)
 
-    bot.send_message(group_chat_id, "💬 Настало время для обсуждения, у вас есть 3 минуты.")
+    bot.send_message(group_chat_id, "💬 Настало время для обсуждения, у вас есть 3 минуты. 💬")
 
     start_discussion_timer(message)
 
