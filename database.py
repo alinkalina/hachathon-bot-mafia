@@ -209,7 +209,9 @@ def transform_result(result: int | str, param: str) -> str | int | list[int]:
     elif param == 'choice':
         result = get_one_by_other('chat_id', 'id', result, table_name='users')
     elif param == 'choices_history':
-        ids = [int(r) for r in result.split(', ')]
+        ids = []
+        if result:
+            ids = [int(r) for r in result.split(', ')]
         result = []
         for i in ids:
             chat_id = get_one_by_other('chat_id', 'id', i, table_name='users')
@@ -305,6 +307,7 @@ def get_users_with_role(group_chat_id: int, role: str) -> list[int]:
     return users_with_role
 
 
+# добавляет новый выбор комиссара или доктора ночью, chosen_chat_id это число
 def insert_into_choices_history(user_chat_id: int, group_chat_id: int, chosen_chat_id: int):
     user_id = get_one_by_other('id', 'chat_id', user_chat_id, table_name='users')
     group_id = get_one_by_other('id', 'group_chat_id', group_chat_id, table_name='groups')
@@ -312,12 +315,15 @@ def insert_into_choices_history(user_chat_id: int, group_chat_id: int, chosen_ch
     sql = f'SELECT choices_history FROM games ' \
           f'WHERE user_id = {user_id} and group_id = {group_id} and session = {session};'
     result = get_from_db(sql)[0][0]
-    result = [int(r) for r in result.split(', ')]
-    user_id = get_one_by_other('id', 'chat_id', chosen_chat_id, table_name='users')
+    if result:
+        result = [int(r) for r in result.split(', ')]
+    else:
+        result = []
+    chosen_user_id = get_one_by_other('id', 'chat_id', chosen_chat_id, table_name='users')
     new_list = result
-    new_list.append(user_id)
+    new_list.append(chosen_user_id)
     data = ', '.join([str(i) for i in new_list])
-    sql = (f'UPDATE games SET choices_history = {data} '
+    sql = (f'UPDATE games SET choices_history = "{data}" '
            f'WHERE user_id = {user_id} and group_id = {group_id} and session = {session};')
     change_db(sql)
 
