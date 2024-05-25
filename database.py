@@ -321,7 +321,13 @@ def insert_into_choices_history(user_chat_id: int, group_chat_id: int, chosen_ch
         result = [int(r) for r in result.split(', ')]
     else:
         result = []
-    chosen_user_id = get_one_by_other('id', 'chat_id', chosen_chat_id, table_name='users')
+
+    if chosen_chat_id:
+        chosen_user_id = get_one_by_other('id', 'chat_id', chosen_chat_id, table_name='users')
+
+    else:
+        chosen_user_id = 0
+
     new_list = result
     new_list.append(chosen_user_id)
     data = ', '.join([str(i) for i in new_list])

@@ -5,7 +5,7 @@ from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 from config import (BOT_TOKEN, LINK_TO_BOT, SHORT_RULES, FULL_RULES, COMMANDS, MIN_NUM_PLAYERS, ROLES, CONTENT_TYPES,
                     MyStates, START_GAME_DELAY, MAFIA_DELAY, COMMISSAR_DELAY, DOCTOR_DELAY, DISCUSSION_DELAY,
-                    VOTING_DELAY)
+                    VOTING_DELAY, BOT_DESCRIPTION)
 
 from database import (add_user, add_group, is_group_playing, add_user_to_games, is_user_playing,
                       change_group_state, check_user_exists, increase_session, get_players_list,
@@ -185,6 +185,7 @@ def make_mafia_stage(message):
     bot.send_message(group_chat_id, "Наступила ночь! Мафия, просыпайтесь и выберите жертву!",
                      reply_markup=bot_link_keyboard)
 
+    i = 1
     for mafia_chat_id in mafia_chat_ids:
         players_to_kill_keyboard = InlineKeyboardMarkup()
 
@@ -192,10 +193,11 @@ def make_mafia_stage(message):
             if alive_player_id not in mafia_chat_ids:  # мафия не должна быть в этом списке
                 player_to_kill_name = str(bot.get_chat_member(group_chat_id, alive_player_id).user.username)
 
-                player_to_kill_btn = InlineKeyboardButton(text=player_to_kill_name,
+                player_to_kill_btn = InlineKeyboardButton(text=f"{i}. {player_to_kill_name}",
                                                           callback_data=f"mafia {alive_player_id}")
 
                 players_to_kill_keyboard.add(player_to_kill_btn)
+                i += 1
 
         if len(mafia_chat_ids) > 1:  # если в игре больше одной мафии, добавляем для них чат
             bot.send_message(mafia_chat_id, "Даю вам минуту на то, чтобы сделать свой выбор!\n\n"
@@ -211,7 +213,6 @@ def make_mafia_stage(message):
 # функция ночного таймера
 def start_mafia_timer(message):
     def end_mafia_stage():
-
         for mafia_chat_id in mafia_chat_ids:
             choice = get_user_data(mafia_chat_id, group_chat_id, "choice")
 
@@ -242,7 +243,7 @@ def start_mafia_timer(message):
     mafia_chat_ids = get_users_with_role(group_chat_id, "Мафия")
 
     for mafia_chat_id in mafia_chat_ids:
-            bot.set_state(mafia_chat_id, MyStates.mafia_chat, mafia_chat_id)  # создаем состояние для общения мафии
+        bot.set_state(mafia_chat_id, MyStates.mafia_chat, mafia_chat_id)  # создаем состояние для общения мафии
 
     threading.Timer(MAFIA_DELAY, end_mafia_stage).start()
 
@@ -252,14 +253,17 @@ def start_commissar_timer(message):
     def end_commissar_stage():
 
         if commissar_chat_id in alive_players:
-            group_link_keyboard = get_group_link_keyboard(commissar_chat_id)
+            choice = get_user_data(commissar_chat_id, group_chat_id, "choice")
 
-            with bot.retrieve_data(commissar_chat_id, commissar_chat_id) as data:
-                msg_with_button_id = data["msg_with_button_id"]
+            if choice is None and len(all_players) - 1 != len(checked_player_ids):  # если комиссар ничего не выбрал
+                group_link_keyboard = get_group_link_keyboard(commissar_chat_id)
 
-                bot.edit_message_text(chat_id=commissar_chat_id, message_id=msg_with_button_id,
-                                      text="Возвращайтесь в группу",
-                                      reply_markup=group_link_keyboard)
+                with bot.retrieve_data(commissar_chat_id, commissar_chat_id) as data:
+                    msg_with_button_id = data["msg_with_button_id"]
+
+                    bot.edit_message_text(chat_id=commissar_chat_id, message_id=msg_with_button_id,
+                                          text="Возвращайтесь в группу",
+                                          reply_markup=group_link_keyboard)
 
             bot.delete_state(commissar_chat_id, commissar_chat_id)
 
@@ -285,8 +289,6 @@ def start_commissar_timer(message):
         checked_player_ids = get_user_data(commissar_chat_id, group_chat_id, "choices_history")
 
         all_players = get_players_list(group_chat_id)
-
-        print(checked_player_ids)
 
         if checked_player_ids:
             text = "Вы уже проверяли:"
@@ -318,38 +320,49 @@ def start_commissar_timer(message):
 
             msg_with_button = bot.send_message(commissar_chat_id, "Проверьте роль игрока!",
                                                reply_markup=players_to_check_keyboard)
-        else:
-            msg_with_button = bot.send_message(commissar_chat_id, "Вы уже проверили всех игроков")
 
-        save_message_id(commissar_chat_id, msg_with_button)
+            save_message_id(commissar_chat_id, msg_with_button)
+
+        else:
+            group_link_keyboard = get_group_link_keyboard(commissar_chat_id)
+
+            bot.send_message(commissar_chat_id, "Вы уже проверили всех игроков", reply_markup=group_link_keyboard)
 
     threading.Timer(COMMISSAR_DELAY, end_commissar_stage).start()
 
 
 def start_doctor_timer(message):
     def end_doctor_stage():
-        group_link_keyboard = get_group_link_keyboard(doctor_chat_id)
+        if doctor_chat_id:
+            choice = get_user_data(doctor_chat_id, group_chat_id, "choice")
 
-        with bot.retrieve_data(doctor_chat_id, doctor_chat_id) as data:
-            msg_with_button_id = data["msg_with_button_id"]
+            if choice is None:  # если доктор ничего не выбрал
 
-            bot.edit_message_text(chat_id=doctor_chat_id, message_id=msg_with_button_id,
-                                  text="Возвращайтесь в группу",
-                                  reply_markup=group_link_keyboard)
+                group_link_keyboard = get_group_link_keyboard(doctor_chat_id)
 
-        bot.delete_state(doctor_chat_id, doctor_chat_id)
+                with bot.retrieve_data(doctor_chat_id, doctor_chat_id) as data:
+                    msg_with_button_id = data["msg_with_button_id"]
+
+                    bot.edit_message_text(chat_id=doctor_chat_id, message_id=msg_with_button_id,
+                                          text="Возвращайтесь в группу",
+                                          reply_markup=group_link_keyboard)
+
+            bot.delete_state(doctor_chat_id, doctor_chat_id)
 
         bot.send_message(group_chat_id, "Доктор вылечил игрока")
 
         for alive_chat_id in alive_players:
             bot.delete_state(alive_chat_id, group_chat_id)
 
+        doctor_choice = get_user_data(doctor_chat_id, group_chat_id, 'choice')
+
+        if not doctor_choice:
+            insert_into_choices_history(doctor_chat_id, group_chat_id, 0)
+
         mafia_chat_ids = get_users_with_role(group_chat_id, "Мафия")
         killed_player = count_votes(group_chat_id, mafia_chat_ids)
 
         healed_users = get_user_data(doctor_chat_id, group_chat_id, 'choices_history')
-
-        print(healed_users)
 
         last_healed_user = None
 
@@ -369,11 +382,6 @@ def start_doctor_timer(message):
                 update_user_data(killed_player, group_chat_id, "killed", 1)
                 bot.send_message(group_chat_id, f"Мафия убила игрока {killed_player_name}")
 
-        doctor_choice = get_user_data(doctor_chat_id, group_chat_id, 'choice')
-
-        if not doctor_choice:
-            insert_into_choices_history(doctor_chat_id, group_chat_id, 0)
-
         make_day_stage(message)
 
     group_chat_id = message.chat.id
@@ -391,21 +399,19 @@ def start_doctor_timer(message):
 
         healed_users = get_user_data(doctor_chat_id, group_chat_id, 'choices_history')
 
-        print(healed_users)
-
         last_healed_user = None
 
         if healed_users:
             last_healed_user = healed_users[-1]
-
-        print(last_healed_user)
 
         is_doctor_heal_himself = doctor_chat_id in healed_users
 
         players_to_heal_keyboard = InlineKeyboardMarkup()
 
         for alive_player_id in alive_players:  # создаем кнопки для доктора
-            if last_healed_user != alive_player_id and not (is_doctor_heal_himself and alive_player_id == doctor_chat_id):
+            if (last_healed_user != alive_player_id and
+                    not (is_doctor_heal_himself and alive_player_id == doctor_chat_id)):
+
                 player_to_heal_name = str(bot.get_chat_member(group_chat_id, alive_player_id).user.username)
 
                 player_to_heal_btn = InlineKeyboardButton(text=player_to_heal_name,
@@ -684,19 +690,6 @@ def process_user_votes(call):
         bot.edit_message_text(chat_id=c_id, message_id=m_id, text=f"Кажется, кнопка устарела")
 
 
-@bot.message_handler(commands=["delete"], chat_types=["supergroup"])
-def deleting_group_state(message):
-    user_id = message.from_user.id
-
-    admin_ids = [admin.user.id for admin in bot.get_chat_administrators(message.chat.id)]
-
-    if user_id in admin_ids:
-        change_group_state(message.chat.id, 0)
-
-    else:
-        bot.send_message(message.chat.id, "В доступе отказано!")
-
-
 @bot.message_handler(content_types=CONTENT_TYPES, chat_types=["supergroup"])
 def deleting_messages(message):
     user_id = message.from_user.id
@@ -712,6 +705,12 @@ def deleting_messages(message):
 
 
 if __name__ == "__main__":
-    bot.set_my_commands(COMMANDS)  # Добавляем команды в меню
+    try:
+        bot.set_my_commands(COMMANDS)  # Добавляем команды в меню
+        bot.set_my_description(BOT_DESCRIPTION)  # Добавляем описание бота
+        bot.set_my_short_description(BOT_DESCRIPTION)  # Добавляем краткое описание бота
+
+    except telebot.apihelper.ApiTelegramException:
+        pass
 
     bot.infinity_polling()
