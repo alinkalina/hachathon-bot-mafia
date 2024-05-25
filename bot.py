@@ -34,8 +34,7 @@ def handle_group_start(message):
 
     bot_link_keyboard = get_bot_link_keyboard()
 
-    text = ("Привет! Я бот, позволяющий играть в мафию. Если хотите начать игру, "
-            "то используйте команду /start_game.\n\n"
+    text = ("Привет! Я бот, позволяющий играть в мафию, где я буду ведущим. Для начала игры введите команду /start_game.\n\n"
             "Перед началом игры прошу вас убедиться, что все игроки написали мне /start в личные сообщения.\n\n")
 
     full_text = text + "<b>Правила:</b>\n" + SHORT_RULES  # добавляем краткие правила к приветственному сообщению
@@ -51,7 +50,7 @@ def handle_private_start(message):
         add_user(user_id)
 
     text = ("Привет! Я бот, позволяющий играть в мафию. Здесь ты можешь ознакомиться с правилами игры "
-            "по команде /rules или можешь вернуться в группу.")
+            "по команде /rules, или можешь вернуться в группу.")
 
     group_link_keyboard = get_group_link_keyboard(user_id)
 
@@ -129,7 +128,7 @@ def start_game_timer(message, msg_with_button):
         num_joined_players = len(get_players_list(group_chat_id))
 
         if num_joined_players < MIN_NUM_PLAYERS:
-            bot.send_message(group_chat_id, "Недостаточно игроков для начала игры! Начните набор заново!")
+            bot.send_message(group_chat_id, "Недостаточно игроков для начала игры, начните набор заново")
 
             change_group_state(group_chat_id, 0)
 
@@ -182,7 +181,7 @@ def make_mafia_stage(message):
 
     bot_link_keyboard = get_bot_link_keyboard()
 
-    bot.send_message(group_chat_id, "Наступила ночь! Мафия, просыпайтесь и выберите жертву!",
+    bot.send_message(group_chat_id, "Наступила ночь 🌙/n😎 Мафия, просыпайтесь, переходите в чат с ботом и выберите жертву!",
                      reply_markup=bot_link_keyboard)
 
     player_number = 1
@@ -202,7 +201,7 @@ def make_mafia_stage(message):
 
         if len(mafia_chat_ids) > 1:  # если в игре больше одной мафии, добавляем для них чат
             bot.send_message(mafia_chat_id, "Даю вам минуту на то, чтобы сделать свой выбор!\n\n"
-                                            "P.S. вы можете обсудить его прямо тут с другими участниками мафии.")
+                                            "P.S. вы можете обсудить его в этом чате с другими участниками мафии.")
 
         msg_with_button = bot.send_message(mafia_chat_id, "Выберите жертву!", reply_markup=players_to_kill_keyboard)
 
@@ -224,13 +223,13 @@ def start_mafia_timer(message):
                     msg_with_button_id = data["msg_with_button_id"]
 
                     bot.edit_message_text(chat_id=mafia_chat_id, message_id=msg_with_button_id,
-                                          text="Этой ночью вы никого не выбрали!",
+                                          text="Этой ночью вы никого не выбрали",
                                           reply_markup=group_link_keyboard)
 
         for alive_chat_id in alive_players:
             bot.delete_state(alive_chat_id, alive_chat_id)
 
-        bot.send_message(group_chat_id, "Мафия закончила обсуждение.")
+        bot.send_message(group_chat_id, "Мафия закончила обсуждение")
 
         start_commissar_timer(message)
 
@@ -277,7 +276,7 @@ def start_commissar_timer(message):
 
     bot_link_keyboard = get_bot_link_keyboard()
 
-    bot.send_message(group_chat_id, "Комиссар, просыпайся и проверь игрока!",
+    bot.send_message(group_chat_id, "🤠 Комиссар, просыпайся, переходи в чат с ботом и проверь игрока!",
                      reply_markup=bot_link_keyboard)
 
     commissar_chat_id = get_users_with_role(group_chat_id, "Комиссар")
@@ -371,17 +370,17 @@ def start_doctor_timer(message):
             last_healed_user = healed_users[-1]
 
         if not killed_player:
-            bot.send_message(group_chat_id, "Мафия не смогла договориться и никого не убила")
+            bot.send_message(group_chat_id, "Наступил день ☀ Ночью мафия не смогла договориться и никого не убила")
 
         else:
             killed_player_name = str(bot.get_chat_member(group_chat_id, killed_player).user.username)
 
             if killed_player == last_healed_user:
-                bot.send_message(group_chat_id, "Мафия попыталась убить игрока, но его спас доктор!")
+                bot.send_message(group_chat_id, "Наступил день ☀ Ночью мафия попыталась убить игрока, но его спас доктор!")
 
             else:
                 update_user_data(killed_player, group_chat_id, "killed", 1)
-                bot.send_message(group_chat_id, f"Мафия убила игрока {killed_player_name}")
+                bot.send_message(group_chat_id, f"Наступил день ☀ Ночью мафия убила игрока {killed_player_name}")
 
         make_day_stage(message)
 
@@ -390,7 +389,7 @@ def start_doctor_timer(message):
 
     bot_link_keyboard = get_bot_link_keyboard()
 
-    bot.send_message(group_chat_id, "Доктор, просыпайся и вылечи игрока!",
+    bot.send_message(group_chat_id, "👨‍⚕ Доктор, просыпайся, переходи в чат с ботом и вылечи игрока!",
                      reply_markup=bot_link_keyboard)
 
     doctor_chat_id = get_users_with_role(group_chat_id, "Доктор")
@@ -481,7 +480,7 @@ def make_day_stage(message):
 
     bot.send_message(group_chat_id, text)
 
-    bot.send_message(group_chat_id, "Настало время для обсуждения! Даю вам 3 минуты!")
+    bot.send_message(group_chat_id, "Настало время для обсуждения, у вас есть 3 минуты")
 
     start_discussion_timer(message)
 
@@ -509,7 +508,7 @@ def make_voting(message):
 
     bot_link_keyboard = get_bot_link_keyboard()
 
-    bot.send_message(message.chat.id, "Настало время голосования! Всех живых игроков прошу перейти в чат со мной.",
+    bot.send_message(message.chat.id, "Настало время голосования! Всех живых игроков прошу перейти в чат со мной",
                      reply_markup=bot_link_keyboard)
 
     for alive_player_id in alive_players:
@@ -542,11 +541,11 @@ def start_voting_timer(message):
                     msg_with_button_id = data["msg_with_button_id"]
 
                     bot.edit_message_text(chat_id=alive_user_chat_id, message_id=msg_with_button_id,
-                                          text="Сегодня вы решили никого не выгонять.",
+                                          text="Сегодня вы решили никого не выгонять",
                                           reply_markup=group_link_keyboard)
 
         if not exiled_player:
-            bot.send_message(group_chat_id, "Жители решили никого не убивать сегодня.")
+            bot.send_message(group_chat_id, "Голоса распределились равномерно, или никто не стал выгонять подозреваемого, поэтому после голосования все остались")
 
         else:
             exiled_player_name = str(bot.get_chat_member(group_chat_id, exiled_player).user.username)
@@ -556,10 +555,10 @@ def start_voting_timer(message):
             exiled_player_role = get_user_data(exiled_player, group_chat_id, "role")
 
             if exiled_player_role.lower() == "мафия":
-                text += "Он был мафией."  # не раскрываем роль полностью
+                text += "Поздравляю, мирные! 🎉 Он был мафией!"  # не раскрываем роль полностью
 
             else:
-                text += "Он не был мафией."
+                text += "Он не был мафией, и теперь шансы на победу мирных жителей ещё уменьшились..."
 
             bot.send_message(group_chat_id, text)
 
@@ -621,7 +620,7 @@ def ready_handler(call):
     if not check_user_exists(user_id):
         bot_link_keyboard = get_bot_link_keyboard()
 
-        bot.send_message(c_id, f"{call.from_user.username}, пожалуйста, напишите /start в чате со мной.",
+        bot.send_message(c_id, f"{call.from_user.username}, пожалуйста, напишите /start в личном чате со мной",
                          reply_markup=bot_link_keyboard)
 
     elif is_user_playing(user_id):
@@ -683,7 +682,7 @@ def process_user_votes(call):
             insert_into_choices_history(c_id, group_chat_id, chosen_user_id)
 
         elif voted_user_role == "doctor":
-            bot.send_message(c_id, f"Игрок {chosen_user_name} - вылечен!")
+            bot.send_message(c_id, f"Игрок {chosen_user_name} вылечен!")
 
             insert_into_choices_history(c_id, group_chat_id, chosen_user_id)
 
