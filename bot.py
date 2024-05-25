@@ -9,7 +9,7 @@ from config import (BOT_TOKEN, LINK_TO_BOT, SHORT_RULES, FULL_RULES, COMMANDS, M
 from database import (add_user, add_group, is_group_playing, add_user_to_games, is_user_playing,
                       change_group_state, check_user_exists, increase_session, get_players_list,
                       get_user_current_group_chat_id, update_user_data, get_user_data, get_alive_users,
-                      get_users_with_role)
+                      get_users_with_role, insert_into_choices_history)
 
 from process_votes import count_votes
 import random
@@ -252,7 +252,6 @@ def start_commissar_timer(message):
     def end_commissar_stage():
 
         if commissar_chat_id in alive_players:
-
             group_link_keyboard = get_group_link_keyboard(commissar_chat_id)
 
             with bot.retrieve_data(commissar_chat_id, commissar_chat_id) as data:
@@ -322,13 +321,17 @@ def start_doctor_timer(message):
         mafia_chat_ids = get_users_with_role(group_chat_id, "Мафия")
         killed_player = count_votes(group_chat_id, mafia_chat_ids)
 
-        # TODO сделать проверку на вылеченного игрока
+        healed_users = get_user_data(doctor_chat_id, group_chat_id, 'choices_history')
+        last_healed_user = healed_users[-1]
 
-        if killed_player is not None:
+        if killed_player is not None and killed_player != last_healed_user:
             update_user_data(killed_player, group_chat_id, "killed", 1)
             bot.send_message(group_chat_id,
                              f"Мафия убила игрока "
                              f"{str(bot.get_chat_member(group_chat_id, killed_player).user.username)}")
+        elif killed_player is not None and killed_player == last_healed_user:
+            bot.send_message(group_chat_id,
+                             f"Мафия попыталась убить {str(bot.get_chat_member(group_chat_id, killed_player).user.username)}, но его спас доктор!")
         else:
             bot.send_message(group_chat_id, "Мафия не смогла договориться и никого не убила")
 
@@ -344,17 +347,25 @@ def start_doctor_timer(message):
 
     doctor_chat_id = get_users_with_role(group_chat_id, 'Доктор')[0]
 
+    healed_users = get_user_data(doctor_chat_id, group_chat_id, 'choices_history')
+    last_healed_user = healed_users[-1]
+
+    is_doctor_heal_himself = doctor_chat_id in healed_users
+
     if doctor_chat_id in alive_players:
         players_to_heal_keyboard = InlineKeyboardMarkup()
 
         for alive_player_id in alive_players:  # создаем кнопки для доктора
-            if alive_player_id != doctor_chat_id:
-                player_to_check_name = str(bot.get_chat_member(group_chat_id, alive_player_id).user.username)
+            if last_healed_user != alive_player_id:
+                if not is_doctor_heal_himself and alive_player_id == doctor_chat_id:
+                    continue
+                else:
+                    player_to_check_name = str(bot.get_chat_member(group_chat_id, alive_player_id).user.username)
 
-                player_to_check_btn = InlineKeyboardButton(text=player_to_check_name,
-                                                           callback_data=f'doctor {alive_player_id}')
+                    player_to_check_btn = InlineKeyboardButton(text=player_to_check_name,
+                                                               callback_data=f'doctor {alive_player_id}')
 
-                players_to_heal_keyboard.add(player_to_check_btn)
+                    players_to_heal_keyboard.add(player_to_check_btn)
 
         msg_with_button = bot.send_message(doctor_chat_id, "Вылечите игрока игрока!",
                                            reply_markup=players_to_heal_keyboard)
@@ -614,8 +625,8 @@ def process_user_votes(call):
             else:
                 bot.send_message(c_id, f"Игрок {chosen_user_name} - не мафия!")
         elif voted_user_role == "doctor":
-            # TODO: добавить проверку на роль доктора
-            pass
+            bot.send_message(c_id, f"Игрок {chosen_user_name} - вылечен!")
+            insert_into_choices_history(c_id, group_chat_id, chosen_user_id)
 
 
     except IndexError:
