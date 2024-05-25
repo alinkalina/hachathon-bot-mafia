@@ -74,6 +74,7 @@ def create_tables():
         role INTEGER,
         choice INTEGER,
         killed INTEGER NOT NULL DEFAULT 0,
+        choices_history TEXT DEFAULT "",
         FOREIGN KEY (group_id) REFERENCES groups (id),
         FOREIGN KEY (session) REFERENCES groups (session),
         FOREIGN KEY (user_id) REFERENCES users (chat_id),
@@ -202,11 +203,17 @@ def get_one_by_other(param_1: str, param_2: str, value: int | str, table_name: s
 
 
 # переводит id в результат, который нужно вернуть в bot.py, используется только в этом файле
-def transform_result(result: int, param: str) -> str | int:
+def transform_result(result: int | str, param: str) -> str | int | list[int]:
     if param == 'role':
         result = get_one_by_other('name', 'id', result, table_name='roles')
     elif param == 'choice':
         result = get_one_by_other('chat_id', 'id', result, table_name='users')
+    elif param == 'choices_history':
+        ids = [int(r) for r in result.split(', ')]
+        result = []
+        for i in ids:
+            chat_id = get_one_by_other('chat_id', 'id', i, table_name='users')
+            result.append(chat_id)
     return result
 
 
@@ -265,7 +272,7 @@ def update_user_data(user_chat_id: int, group_chat_id: int, param: str, data: st
 
 
 # получает данные юзера из games, param - название колонки, возвращает роль текстом, chat_id юзера или 0/1 (жив/убит)
-def get_user_data(user_chat_id: int, group_chat_id: int, param: str) -> str | int | None:
+def get_user_data(user_chat_id: int, group_chat_id: int, param: str) -> str | int | None | list[int]:
     user_id = get_one_by_other('id', 'chat_id', user_chat_id, table_name='users')
     group_id = get_one_by_other('id', 'group_chat_id', group_chat_id, table_name='groups')
     session = get_group_current_session(group_chat_id)
@@ -296,6 +303,23 @@ def get_users_with_role(group_chat_id: int, role: str) -> list[int]:
         if user_role == role:
             users_with_role.append(chat_id)
     return users_with_role
+
+
+def insert_into_choices_history(user_chat_id: int, group_chat_id: int, chosen_chat_id: int):
+    user_id = get_one_by_other('id', 'chat_id', user_chat_id, table_name='users')
+    group_id = get_one_by_other('id', 'group_chat_id', group_chat_id, table_name='groups')
+    session = get_group_current_session(group_chat_id)
+    sql = f'SELECT choices_history FROM games ' \
+          f'WHERE user_id = {user_id} and group_id = {group_id} and session = {session};'
+    result = get_from_db(sql)[0][0]
+    result = [int(r) for r in result.split(', ')]
+    user_id = get_one_by_other('id', 'chat_id', chosen_chat_id, table_name='users')
+    new_list = result
+    new_list.append(user_id)
+    data = ', '.join([str(i) for i in new_list])
+    sql = (f'UPDATE games SET choices_history = {data} '
+           f'WHERE user_id = {user_id} and group_id = {group_id} and session = {session};')
+    change_db(sql)
 
 
 create_tables()
