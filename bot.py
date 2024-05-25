@@ -369,6 +369,11 @@ def start_doctor_timer(message):
                 update_user_data(killed_player, group_chat_id, "killed", 1)
                 bot.send_message(group_chat_id, f"Мафия убила игрока {killed_player_name}")
 
+        doctor_choice = get_user_data(doctor_chat_id, group_chat_id, 'choice')
+
+        if not doctor_choice:
+            insert_into_choices_history(doctor_chat_id, group_chat_id, 0)
+
         make_day_stage(message)
 
     group_chat_id = message.chat.id
@@ -386,10 +391,14 @@ def start_doctor_timer(message):
 
         healed_users = get_user_data(doctor_chat_id, group_chat_id, 'choices_history')
 
+        print(healed_users)
+
         last_healed_user = None
 
         if healed_users:
             last_healed_user = healed_users[-1]
+
+        print(last_healed_user)
 
         is_doctor_heal_himself = doctor_chat_id in healed_users
 

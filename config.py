@@ -42,19 +42,21 @@ FULL_RULES = ("<b>Правила игры:</b>\n\n"
               "Мафия знает друг друга и действует сообща, определяя жертву ночью с помощью обсуждения в боте.\n\n"
               "<b>Мафия побеждает, когда количество мирных жителей меньше или равно количеству Мафии.</b>")
 
-MIN_NUM_PLAYERS = 6
+MIN_NUM_PLAYERS = 3
 
 ROLES = ['Мирный житель', 'Мафия', 'Комиссар', 'Доктор']  # сюда будем записывать новые роли, и они автоматически добавятся в БД
 
 # таймеры
-START_GAME_DELAY = 30
+START_GAME_DELAY = 10
 
-MAFIA_DELAY = 60
+MAFIA_DELAY = 10
 
-COMMISSAR_DELAY = 30
+COMMISSAR_DELAY = 10
 
-DOCTOR_DELAY = 30
+DOCTOR_DELAY = 10
 
-DISCUSSION_DELAY = 180
+DISCUSSION_DELAY = 10
 
-VOTING_DELAY = 30
+VOTING_DELAY = 10
+
+print(int(False))

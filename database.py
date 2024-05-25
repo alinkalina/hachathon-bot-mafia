@@ -214,7 +214,9 @@ def transform_result(result: int | str, param: str) -> str | int | list[int]:
             ids = [int(r) for r in result.split(', ')]
         result = []
         for i in ids:
-            chat_id = get_one_by_other('chat_id', 'id', i, table_name='users')
+            chat_id = i
+            if i:
+                chat_id = get_one_by_other('chat_id', 'id', i, table_name='users')
             result.append(chat_id)
     return result
 
