@@ -1,0 +1,11 @@
+[Unit]
+Description=clever text and voice gpt assistant
+After=multi-user.target
+[Service]
+Type=simple
+ExecStart=/path/to/your/venv/bin/python3 /path/to/your/launching_bot_file
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

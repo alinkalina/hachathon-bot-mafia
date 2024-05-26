@@ -1,0 +1,11 @@
+[Unit]
+Description=bot mafia for groups
+After=multi-user.target
+[Service]
+Type=simple
+ExecStart=/home/student/hachathon-bot-mafia/venv/bin/python3 /home/student/hachathon-bot-mafia/bot.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
