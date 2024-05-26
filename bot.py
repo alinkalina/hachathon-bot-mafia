@@ -698,11 +698,6 @@ def process_user_votes(call):
         bot.edit_message_text(chat_id=c_id, message_id=m_id, text=f"Кажется, кнопка устарела")
 
 
-@bot.message_handler(commands=["delete"])
-def delete_group_state(message):
-    change_group_state(message.chat.id, 0)
-
-
 @bot.message_handler(content_types=CONTENT_TYPES, chat_types=["supergroup"])
 def deleting_messages(message):
     user_id = message.from_user.id
