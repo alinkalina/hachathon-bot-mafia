@@ -16,7 +16,7 @@
 - ban users
 - invite users via link
 
-# Далее
+## Далее
 - Пользуйтесь командами из Меню
 - Используйте команду `/start_game` для начала игры
 - Ход игры подробно описан в файле [ТЗ](https://github.com/alinkalina/hachathon-bot-mafia/blob/main/ТЗ.md)
