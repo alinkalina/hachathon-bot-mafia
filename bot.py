@@ -270,7 +270,7 @@ def start_commissar_timer(message):
 
             bot.delete_state(commissar_chat_id, commissar_chat_id)
 
-        bot.send_message(group_chat_id, "🕵🏻 Комиссар проверил игрока")
+        bot.send_message(group_chat_id, "🕵🏻 Комиссар проверил игрока.")
 
         start_doctor_timer(message)
 
@@ -352,7 +352,7 @@ def start_doctor_timer(message):
 
             bot.delete_state(doctor_chat_id, doctor_chat_id)
 
-        bot.send_message(group_chat_id, "👨🏻‍⚕️ Доктор вылечил игрока")
+        bot.send_message(group_chat_id, "👨🏻‍⚕️ Доктор вылечил игрока.")
 
         for alive_chat_id in alive_players:
             bot.delete_state(alive_chat_id, group_chat_id)
@@ -372,7 +372,7 @@ def start_doctor_timer(message):
         if healed_users:
             last_healed_user = healed_users[-1]
 
-        text = "☀ Наступил день! ☀\n"
+        text = "☀ Наступил день! ☀\n\n"
 
         if not killed_player:
             bot.send_message(group_chat_id, text + "Ночью мафия не смогла договориться и никого не убила.")
@@ -566,7 +566,7 @@ def start_voting_timer(message):
                 text += "🎉 Поздравляю, мирные жители! Он был мафией!"  # не раскрываем роль полностью
 
             else:
-                text += "🙊 Он не был мафией, и теперь шансы на победу мирных жителей стали на порядок меньше..."
+                text += "🙊 Упс! Он не был мафией!"
 
             bot.send_message(group_chat_id, text)
 
