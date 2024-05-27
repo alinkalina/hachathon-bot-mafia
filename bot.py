@@ -190,25 +190,27 @@ def make_mafia_stage(message):
     player_number = 1
 
     for mafia_chat_id in mafia_chat_ids:
-        players_to_kill_keyboard = InlineKeyboardMarkup()
+        if mafia_chat_id in alive_players:
+            players_to_kill_keyboard = InlineKeyboardMarkup()
 
-        for alive_player_id in alive_players:  # создаем клавиатуру для мафии
-            if alive_player_id not in mafia_chat_ids:  # мафия не должна быть в этом списке
-                player_to_kill_name = str(bot.get_chat_member(group_chat_id, alive_player_id).user.username)
+            for alive_player_id in alive_players:  # создаем клавиатуру для мафии
+                if alive_player_id not in mafia_chat_ids:  # мафия не должна быть в этом списке
+                    player_to_kill_name = str(bot.get_chat_member(group_chat_id, alive_player_id).user.username)
 
-                player_to_kill_btn = InlineKeyboardButton(text=f"{player_number}. {player_to_kill_name}",
-                                                          callback_data=f"mafia {alive_player_id}")
+                    player_to_kill_btn = InlineKeyboardButton(text=f"{player_number}. {player_to_kill_name}",
+                                                              callback_data=f"mafia {alive_player_id}")
 
-                players_to_kill_keyboard.add(player_to_kill_btn)
-                player_number += 1
+                    players_to_kill_keyboard.add(player_to_kill_btn)
+                    player_number += 1
 
-        if len(mafia_chat_ids) > 1:  # если в игре больше одной мафии, добавляем для них чат
-            bot.send_message(mafia_chat_id, "Даю вам минуту на то, чтобы сделать свой выбор!\n\n"
-                                            "P.S. Вы можете обсудить его в этом чате с другими участниками мафии.")
+            if len(mafia_chat_ids) > 1:  # если в игре больше одной мафии, добавляем для них чат
+                bot.send_message(mafia_chat_id, "Даю вам минуту на то, чтобы сделать свой выбор!\n\n"
+                                                "P.S. Вы можете обсудить его в этом чате с другими участниками мафии.")
 
-        msg_with_button = bot.send_message(mafia_chat_id, "😈 Выберите жертву! 😈", reply_markup=players_to_kill_keyboard)
+            msg_with_button = bot.send_message(mafia_chat_id, "😈 Выберите жертву! 😈",
+                                               reply_markup=players_to_kill_keyboard)
 
-        save_message_id(mafia_chat_id, msg_with_button)
+            save_message_id(mafia_chat_id, msg_with_button)
 
     start_mafia_timer(message)
 
@@ -217,17 +219,18 @@ def make_mafia_stage(message):
 def start_mafia_timer(message):
     def end_mafia_stage():
         for mafia_chat_id in mafia_chat_ids:
-            choice = get_user_data(mafia_chat_id, group_chat_id, "choice")
+            if mafia_chat_id in alive_players:
+                choice = get_user_data(mafia_chat_id, group_chat_id, "choice")
 
-            if choice is None:  # если игрок мафии ничего не выбрал
-                group_link_keyboard = get_group_link_keyboard(mafia_chat_id)
+                if choice is None:  # если игрок мафии ничего не выбрал
+                    group_link_keyboard = get_group_link_keyboard(mafia_chat_id)
 
-                with bot.retrieve_data(mafia_chat_id, mafia_chat_id) as data:  # достаем id сообщения с кнопками
-                    msg_with_button_id = data["msg_with_button_id"]
+                    with bot.retrieve_data(mafia_chat_id, mafia_chat_id) as data:  # достаем id сообщения с кнопками
+                        msg_with_button_id = data["msg_with_button_id"]
 
-                    bot.edit_message_text(chat_id=mafia_chat_id, message_id=msg_with_button_id,
-                                          text="Этой ночью вы никого не выбрали",
-                                          reply_markup=group_link_keyboard)
+                        bot.edit_message_text(chat_id=mafia_chat_id, message_id=msg_with_button_id,
+                                              text="Этой ночью вы никого не выбрали!",
+                                              reply_markup=group_link_keyboard)
 
         for alive_chat_id in alive_players:
             bot.delete_state(alive_chat_id, alive_chat_id)
@@ -246,7 +249,8 @@ def start_mafia_timer(message):
     mafia_chat_ids = get_users_with_role(group_chat_id, "Мафия")
 
     for mafia_chat_id in mafia_chat_ids:
-        bot.set_state(mafia_chat_id, MyStates.mafia_chat, mafia_chat_id)  # создаем состояние для общения мафии
+        if mafia_chat_id in alive_players:
+            bot.set_state(mafia_chat_id, MyStates.mafia_chat, mafia_chat_id)  # создаем состояние для общения мафии
 
     threading.Timer(MAFIA_DELAY, end_mafia_stage).start()
 
@@ -254,12 +258,10 @@ def start_mafia_timer(message):
 # таймер для комиссара
 def start_commissar_timer(message):
     def end_commissar_stage():
-
         if commissar_chat_id in alive_players:
             choice = get_user_data(commissar_chat_id, group_chat_id, "choice")
 
             if choice is None and len(all_players) - 1 != len(checked_player_ids):  # если комиссар ничего не выбрал
-                group_link_keyboard = get_group_link_keyboard(commissar_chat_id)
 
                 with bot.retrieve_data(commissar_chat_id, commissar_chat_id) as data:
                     msg_with_button_id = data["msg_with_button_id"]
@@ -284,7 +286,7 @@ def start_commissar_timer(message):
 
     commissar_chat_id = get_users_with_role(group_chat_id, "Комиссар")
 
-    if commissar_chat_id:
+    if commissar_chat_id in alive_players:
         commissar_chat_id = commissar_chat_id[0]
 
         players_to_check_keyboard = InlineKeyboardMarkup()
@@ -336,7 +338,7 @@ def start_commissar_timer(message):
 
 def start_doctor_timer(message):
     def end_doctor_stage():
-        if doctor_chat_id:
+        if doctor_chat_id in alive_players:
             choice = get_user_data(doctor_chat_id, group_chat_id, "choice")
 
             if choice is None:  # если доктор ничего не выбрал
@@ -399,7 +401,7 @@ def start_doctor_timer(message):
 
     doctor_chat_id = get_users_with_role(group_chat_id, "Доктор")
 
-    if doctor_chat_id:
+    if doctor_chat_id in alive_players:
         doctor_chat_id = doctor_chat_id[0]
 
         healed_users = get_user_data(doctor_chat_id, group_chat_id, 'choices_history')
@@ -456,9 +458,10 @@ def mafia_chat(message):
     group_chat_id = get_user_current_group_chat_id(user_id)
 
     mafia_chat_ids = get_users_with_role(group_chat_id, "Мафия")
+    alive_players = get_alive_users(group_chat_id)
 
     for mafia_chat_id in mafia_chat_ids:
-        if mafia_chat_id != user_id:
+        if mafia_chat_id != user_id and mafia_chat_id in alive_players:
             bot.send_message(mafia_chat_id, f"{message.from_user.username}: {message.text}")
 
 
@@ -587,11 +590,11 @@ def check_game_end(group_chat_id):
     winners_list = []
     text = ""
 
-    alive_players = get_alive_users(group_chat_id)
+    all_players = get_players_list(group_chat_id)
 
     mafia_chat_ids = get_users_with_role(group_chat_id, "Мафия")
 
-    pieceful_player_ids = sorted(list(set(alive_players) - set(mafia_chat_ids)))
+    pieceful_player_ids = sorted(list(set(all_players) - set(mafia_chat_ids)))
 
     if len(pieceful_player_ids) <= len(mafia_chat_ids):
         text = "🎉 Мафия выиграла! 🎉\n\n"
