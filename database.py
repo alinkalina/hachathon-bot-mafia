@@ -40,7 +40,9 @@ def create_tables():
     cursor.execute(f'''
     CREATE TABLE IF NOT EXISTS users(
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        chat_id INTEGER NOT NULL UNIQUE
+        chat_id INTEGER NOT NULL UNIQUE,
+        wins INTEGER DEFAULT 0,
+        loses INTEGER DEFAULT 0
     );
     ''')
 
@@ -58,7 +60,9 @@ def create_tables():
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         group_chat_id INTEGER NOT NULL UNIQUE,
         is_playing INTEGER NOT NULL DEFAULT 0,
-        session INTEGER NOT NULL DEFAULT 0
+        session INTEGER NOT NULL DEFAULT 0,
+        mafia_wins INTEGER DEFAULT 0,
+        citizens_wins INTEGER DEFAULT 0
     );
     ''')
     # is_playing - 0 если группа не играет, 1 - если играет
@@ -333,6 +337,35 @@ def insert_into_choices_history(user_chat_id: int, group_chat_id: int, chosen_ch
     data = ', '.join([str(i) for i in new_list])
     sql = (f'UPDATE games SET choices_history = "{data}" '
            f'WHERE user_id = {user_id} and group_id = {group_id} and session = {session};')
+    change_db(sql)
+
+
+def get_statistics(chat_id: int, table_name: str) -> dict[str, int]:
+    if table_name == 'users':
+        columns = ['wins', 'loses', 'chat_id']
+
+    else:
+        columns = ['mafia_wins', 'citizens_wins', 'group_chat_id']
+
+    sql = f'SELECT {columns[0]}, {columns[1]} FROM {table_name} WHERE {columns[2]} = {chat_id};'
+    result = get_from_db(sql)
+
+    return {columns[0]: result[0][0], columns[1]: result[0][1]}
+
+
+def change_statistics(chat_id: int, result: str):
+    if result in ['wins', 'loses']:
+        table_name = 'users'
+        column = 'chat_id'
+
+    else:
+        table_name = 'groups'
+        column = 'group_chat_id'
+
+    current_statistics = get_statistics(chat_id, table_name)
+    current_data = current_statistics.get(result)
+
+    sql = f'UPDATE {table_name} SET {result} = {current_data + 1} WHERE {column} = {chat_id};'
     change_db(sql)
 
 

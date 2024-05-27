@@ -10,11 +10,12 @@ from config import (BOT_TOKEN, LINK_TO_BOT, SHORT_RULES, FULL_RULES, COMMANDS, M
 from database import (add_user, add_group, is_group_playing, add_user_to_games, is_user_playing,
                       change_group_state, check_user_exists, increase_session, get_players_list,
                       get_user_current_group_chat_id, update_user_data, get_user_data, get_alive_users,
-                      get_users_with_role, insert_into_choices_history)
+                      get_users_with_role, insert_into_choices_history, get_statistics, change_statistics)
 
 from process_votes import count_votes
 import random
 import threading
+
 
 storage = StateMemoryStorage()
 
@@ -156,7 +157,7 @@ def assign_roles(group_chat_id):
             for i in range(num_mafia):
                 roles.append(role)
 
-        elif role in ["Комиссар", 'Доктор']:
+        elif role in ["Комиссар", "Доктор"]:
             roles.append(role)
 
         else:
@@ -263,6 +264,8 @@ def start_commissar_timer(message):
 
             if choice is None and len(all_players) - 1 != len(checked_player_ids):  # если комиссар ничего не выбрал
 
+                group_link_keyboard = get_group_link_keyboard(commissar_chat_id)
+
                 with bot.retrieve_data(commissar_chat_id, commissar_chat_id) as data:
                     msg_with_button_id = data["msg_with_button_id"]
 
@@ -284,10 +287,9 @@ def start_commissar_timer(message):
     bot.send_message(group_chat_id, "🕵🏻 Комиссар, просыпайся, переходи в чат с ботом и проверь игрока!",
                      reply_markup=bot_link_keyboard)
 
-    commissar_chat_id = get_users_with_role(group_chat_id, "Комиссар")
+    commissar_chat_id = get_users_with_role(group_chat_id, "Комиссар")[0]
 
     if commissar_chat_id in alive_players:
-        commissar_chat_id = commissar_chat_id[0]
 
         players_to_check_keyboard = InlineKeyboardMarkup()
 
@@ -352,6 +354,11 @@ def start_doctor_timer(message):
                                           text="Возвращайтесь в группу",
                                           reply_markup=group_link_keyboard)
 
+            doctor_choice = get_user_data(doctor_chat_id, group_chat_id, "choice")
+
+            if not doctor_choice:
+                insert_into_choices_history(doctor_chat_id, group_chat_id, 0)
+
             bot.delete_state(doctor_chat_id, doctor_chat_id)
 
         bot.send_message(group_chat_id, "👨🏻‍⚕️ Доктор вылечил игрока.")
@@ -359,15 +366,10 @@ def start_doctor_timer(message):
         for alive_chat_id in alive_players:
             bot.delete_state(alive_chat_id, group_chat_id)
 
-        doctor_choice = get_user_data(doctor_chat_id, group_chat_id, 'choice')
-
-        if not doctor_choice:
-            insert_into_choices_history(doctor_chat_id, group_chat_id, 0)
-
         mafia_chat_ids = get_users_with_role(group_chat_id, "Мафия")
         killed_player = count_votes(group_chat_id, mafia_chat_ids)
 
-        healed_users = get_user_data(doctor_chat_id, group_chat_id, 'choices_history')
+        healed_users = get_user_data(doctor_chat_id, group_chat_id, "choices_history")
 
         last_healed_user = None
 
@@ -399,12 +401,11 @@ def start_doctor_timer(message):
     bot.send_message(group_chat_id, "👨🏻‍⚕️ Доктор, просыпайся, переходи в чат с ботом и вылечи игрока!",
                      reply_markup=bot_link_keyboard)
 
-    doctor_chat_id = get_users_with_role(group_chat_id, "Доктор")
+    doctor_chat_id = get_users_with_role(group_chat_id, "Доктор")[0]
 
     if doctor_chat_id in alive_players:
-        doctor_chat_id = doctor_chat_id[0]
 
-        healed_users = get_user_data(doctor_chat_id, group_chat_id, 'choices_history')
+        healed_users = get_user_data(doctor_chat_id, group_chat_id, "choices_history")
 
         last_healed_user = None
 
@@ -422,7 +423,7 @@ def start_doctor_timer(message):
                 player_to_heal_name = str(bot.get_chat_member(group_chat_id, alive_player_id).user.username)
 
                 player_to_heal_btn = InlineKeyboardButton(text=player_to_heal_name,
-                                                          callback_data=f'doctor {alive_player_id}')
+                                                          callback_data=f"doctor {alive_player_id}")
 
                 players_to_heal_keyboard.add(player_to_heal_btn)
 
@@ -591,26 +592,42 @@ def check_game_end(group_chat_id):
     text = ""
 
     all_players = get_players_list(group_chat_id)
+    alive_players = get_alive_users(group_chat_id)
 
     mafia_chat_ids = get_users_with_role(group_chat_id, "Мафия")
+    alive_mafia_chat_ids = [alive_mafia for alive_mafia in mafia_chat_ids if alive_mafia in alive_players]
 
     pieceful_player_ids = sorted(list(set(all_players) - set(mafia_chat_ids)))
+    alive_pieceful_player_ids = [alive_citizen for alive_citizen in pieceful_player_ids
+                                 if alive_citizen in alive_players]
 
-    if len(pieceful_player_ids) <= len(mafia_chat_ids):
+    if len(alive_pieceful_player_ids) <= len(alive_mafia_chat_ids):
         text = "🎉 Мафия выиграла! 🎉\n\n"
         winners_list = mafia_chat_ids
+        change_statistics(group_chat_id, "mafia_wins")
 
-    elif len(mafia_chat_ids) == 0:
+    elif len(alive_mafia_chat_ids) == 0:
         text = "🎉 Мирные жители смогли побороть мафию! 🎉\n\n"
         winners_list = pieceful_player_ids
+        change_statistics(group_chat_id, "citizens_wins")
 
     if winners_list:  # если условия выше выполнены
         text += "Победившие игроки:\n"
 
-        for i, user_id in enumerate(winners_list):
-            winner_name = str(bot.get_chat_member(group_chat_id, user_id).user.username)
+        num_winner = 1
 
-            text += f"{i + 1}. {winner_name}\n"
+        for user_id in all_players:
+            if user_id in winners_list:
+                change_statistics(user_id, "wins")
+
+                winner_name = str(bot.get_chat_member(group_chat_id, user_id).user.username)
+
+                text += f"{num_winner}. {winner_name}\n"
+
+                num_winner += 1
+
+            else:
+                change_statistics(user_id, "loses")
 
         bot.send_message(group_chat_id, text)
 
@@ -619,6 +636,53 @@ def check_game_end(group_chat_id):
         return True
 
     return False
+
+
+def process_counts(number):
+    words = ["раз", "раза"]
+    word_index = 0
+    ends_with = int(str(number)[-1])
+
+    if ends_with in [2, 3, 4] and not(len(str(number)) >= 2 and int(str(number)[-2]) == 1):
+        word_index = 1
+
+    return words[word_index]
+
+
+@bot.message_handler(commands=["stats"], chat_types=["supergroup"])
+def show_group_statistics(message):
+    group_chat_id = message.chat.id
+
+    group_stats = get_statistics(group_chat_id, "groups")
+    mafia_wins = group_stats.get("mafia_wins")
+    citizen_wins = group_stats.get("citizens_wins")
+
+    citizen_word_form = process_counts(citizen_wins)
+    mafia_word_form = process_counts(mafia_wins)
+
+    text = (f"<b>СТАТИСТИКА ГРУППЫ:</b>\n\n"
+            f"<b>Мирные жители</b> не дали себя в обиду ровно <b>{citizen_wins} {citizen_word_form}</b>.\n\n"
+            f"<b>Мафия</b> настигла мирных жителей ровно <b>{mafia_wins} {mafia_word_form}</b>.")
+
+    bot.send_message(group_chat_id, text, parse_mode='HTML')
+
+
+@bot.message_handler(commands=["stats"], chat_types=["private"])
+def show_user_statistics(message):
+    user_id = message.chat.id
+
+    group_stats = get_statistics(user_id, "users")
+    wins = group_stats.get("wins")
+    loses = group_stats.get("loses")
+
+    wins_word_form = process_counts(wins)
+    loses_word_form = process_counts(loses)
+
+    text = (f"<b>СТАТИСТИКА ИГРОКА:</b>\n\n"
+            f"Вы прекрасно отыграли свою роль ровно <b>{wins} {wins_word_form}</b>.\n\n"
+            f"Удача отвернулась от вас ровно <b>{loses} {loses_word_form}</b>.")
+
+    bot.send_message(user_id, text, parse_mode='HTML')
 
 
 # обработка нажатия на кнопку "Готов!"
@@ -699,6 +763,11 @@ def process_user_votes(call):
 
     except IndexError:
         bot.edit_message_text(chat_id=c_id, message_id=m_id, text=f"Кажется, кнопка устарела")
+
+
+@bot.message_handler(commands=["delete"])
+def delete_group_state(message):
+    change_group_state(message.chat.id, 0)
 
 
 @bot.message_handler(content_types=CONTENT_TYPES, chat_types=["supergroup"])
