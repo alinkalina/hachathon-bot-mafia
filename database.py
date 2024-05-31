@@ -369,5 +369,23 @@ def change_statistics(chat_id: int, result: str):
     change_db(sql)
 
 
+# список всех юзеров начиная с того, у которого больше всего побед
+def get_all_users_rating() -> list[tuple]:
+    sql = 'SELECT chat_id, wins, loses FROM users ORDER BY wins DESC;'
+    result = get_from_db(sql)
+    return result
+
+
+# список юзеров, игравших в группе, начиная с того, у которого больше всего побед
+def get_group_users_rating(group_chat_id: int) -> list[tuple]:
+    group_id = get_one_by_other('id', 'group_chat_id', group_chat_id, table_name='groups')
+    sql = f'SELECT DISTINCT user_id FROM games WHERE group_id = {group_id};'
+    result = get_from_db(sql)
+    user_ids = tuple([user_id[0] for user_id in result])
+    sql = f'SELECT chat_id, wins, loses FROM users WHERE id in {user_ids} ORDER BY wins DESC;'
+    result = get_from_db(sql)
+    return result
+
+
 create_tables()
 update_roles()
