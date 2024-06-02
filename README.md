@@ -7,6 +7,8 @@
 - `/start`
 - `/start_game`
 - `/rules`
+- `/stats`
+- `/rating`
 
 # Инструкция по использованию бота
 - Перейдите в бота по [ссылке](https://t.me/hackathon_mafia_bot) и нажмите СТАРТ
