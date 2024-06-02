@@ -10,7 +10,8 @@ from config import (BOT_TOKEN, LINK_TO_BOT, SHORT_RULES, FULL_RULES, COMMANDS, M
 from database import (add_user, add_group, is_group_playing, add_user_to_games, is_user_playing,
                       change_group_state, check_user_exists, increase_session, get_players_list,
                       get_user_current_group_chat_id, update_user_data, get_user_data, get_alive_users,
-                      get_users_with_role, insert_into_choices_history, get_statistics, change_statistics)
+                      get_users_with_role, insert_into_choices_history, get_statistics, change_statistics,
+                      get_all_users_rating, get_group_users_rating)
 
 from process_votes import count_votes
 import random
@@ -643,7 +644,7 @@ def process_counts(number):
     word_index = 0
     ends_with = int(str(number)[-1])
 
-    if ends_with in [2, 3, 4] and not(len(str(number)) >= 2 and int(str(number)[-2]) == 1):
+    if ends_with in [2, 3, 4] and not (len(str(number)) >= 2 and int(str(number)[-2]) == 1):
         word_index = 1
 
     return words[word_index]
@@ -683,6 +684,101 @@ def show_user_statistics(message):
             f"Удача отвернулась от вас ровно <b>{loses} {loses_word_form}</b>.")
 
     bot.send_message(user_id, text, parse_mode='HTML')
+
+
+def get_rating_text_for_user(i, users_rating):
+    user_id, wins, loses = users_rating[i]
+
+    wins_percentage = 0
+
+    if wins or loses:
+        wins_percentage = wins // (wins + loses)
+
+    user_name = bot.get_chat_member(user_id, user_id).user.username
+
+    text = (f"{i + 1}. <b>{user_name}</b>\n"
+            f"Процент побед: {wins_percentage}\n"
+            f"Побед: {wins}\n"
+            f"Поражений {loses}\n\n")
+
+    return text
+
+
+@bot.message_handler(commands=["rating"])
+def show_all_rating(message):
+    group_chat_id = message.chat.id
+
+    if message.chat.type == "supergroup":
+        users_rating = get_group_users_rating(group_chat_id)
+        text = "<b>РЕЙТИНГ ГРУППЫ</b>\n\n"
+
+    else:
+        users_rating = get_all_users_rating()
+        text = "<b>ОБЩИЙ РЕЙТИНГ</b>\n\n"
+
+    next_keyboard = InlineKeyboardMarkup()
+
+    for i in range(len(users_rating)):
+        if i <= 9:
+            text += get_rating_text_for_user(i, users_rating)
+
+        else:
+            next_btn = InlineKeyboardButton(text=">>", callback_data=1)
+            next_keyboard.add(next_btn)
+            break
+
+    if len(users_rating) > 10:
+        bot.send_message(group_chat_id, text, reply_markup=next_keyboard, parse_mode="html")
+        return
+
+    bot.send_message(group_chat_id, text, parse_mode="html")
+
+
+@bot.callback_query_handler(func=lambda call: call.data.isdigit())
+def process_changing_rates(call):
+    c_id = call.message.chat.id
+    m_id = call.message.message_id
+
+    current_decade = int(call.data)
+
+    if call.message.chat.type == "supergroup":
+        users_rating = get_group_users_rating(c_id)
+        text = "<b>РЕЙТИНГ ГРУППЫ</b>\n\n"
+
+    else:
+        users_rating = get_all_users_rating()
+        text = "<b>ОБЩИЙ РЕЙТИНГ</b>\n\n"
+
+    is_last_decade = str(current_decade) == str(len(users_rating))[0]
+
+    back_keyboard = InlineKeyboardMarkup()
+
+    if is_last_decade:
+        for i in range(current_decade * 10, len(users_rating)):
+            text += get_rating_text_for_user(i, users_rating)
+
+        back_btn = InlineKeyboardButton(text="<<", callback_data=f"{current_decade - 1}")
+        back_keyboard.add(back_btn)
+
+        bot.edit_message_text(chat_id=c_id, message_id=m_id, text=text, reply_markup=back_keyboard,  parse_mode="html")
+
+    else:
+        moving_keyboard = InlineKeyboardMarkup()
+
+        for i in range(current_decade * 10, current_decade * 10 + 10):
+            text += get_rating_text_for_user(i, users_rating)
+
+        next_btn = InlineKeyboardButton(text=">>", callback_data=f"{current_decade + 1}")
+
+        if current_decade != 0:
+            back_btn = InlineKeyboardButton(text="<<", callback_data=f"{current_decade - 1}")
+
+            moving_keyboard.add(back_btn, next_btn)
+
+        else:
+            moving_keyboard.add(next_btn)
+
+        bot.edit_message_text(chat_id=c_id, message_id=m_id, text=text, reply_markup=moving_keyboard, parse_mode="html")
 
 
 # обработка нажатия на кнопку "Готов!"

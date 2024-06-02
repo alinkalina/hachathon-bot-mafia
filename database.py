@@ -373,6 +373,7 @@ def change_statistics(chat_id: int, result: str):
 def get_all_users_rating() -> list[tuple]:
     sql = 'SELECT chat_id, wins, loses FROM users ORDER BY wins DESC;'
     result = get_from_db(sql)
+
     return result
 
 

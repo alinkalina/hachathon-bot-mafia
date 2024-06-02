@@ -13,7 +13,9 @@ LINK_TO_BOT = "https://t.me/hackathon_mafia_bot"
 
 COMMANDS = [BotCommand(command="start", description="Запуск бота"),
             BotCommand(command="rules", description="Подробные правила игры в мафию"),
-            BotCommand(command="start_game", description="Начало игры")]
+            BotCommand(command="start_game", description="Начало игры"),
+            BotCommand(command="stats", description="Статистика игроков"),
+            BotCommand(command="rating", description="Рейтинг игроков")]
 
 BOT_DESCRIPTION = "Бот, который позволяет играть в Мафию, где ведущий - бот."
 
