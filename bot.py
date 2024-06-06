@@ -699,7 +699,7 @@ def get_rating_text_for_user(i, users_rating):
     text = (f"{i + 1}. <b>{user_name}</b>\n"
             f"Процент побед: {wins_percentage}\n"
             f"Побед: {wins}\n"
-            f"Поражений {loses}\n\n")
+            f"Поражений: {loses}\n\n")
 
     return text
 
