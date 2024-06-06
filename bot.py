@@ -16,7 +16,7 @@ from database import (add_user, add_group, is_group_playing, add_user_to_games, 
 from process_votes import count_votes
 import random
 import threading
-
+import pymorphy3
 
 storage = StateMemoryStorage()
 
@@ -639,15 +639,20 @@ def check_game_end(group_chat_id):
     return False
 
 
-def process_counts(number):
-    words = ["раз", "раза"]
-    word_index = 0
-    ends_with = int(str(number)[-1])
+def decline_word_by_number(number, word):
+    morph = pymorphy3.MorphAnalyzer()
+    parsed_word = morph.parse(word)[0]
 
-    if ends_with in [2, 3, 4] and not (len(str(number)) >= 2 and int(str(number)[-2]) == 1):
-        word_index = 1
+    if number % 10 == 1 and number % 100 != 11:
+        form = parsed_word.inflect({'sing', 'nomn'}).word  # единственное число, именительный падеж
 
-    return words[word_index]
+    elif 2 <= number % 10 <= 4 and (number % 100 < 10 or number % 100 >= 20):
+        form = parsed_word.inflect({'sing', 'gent'}).word  # единственное число, родительный падеж
+
+    else:
+        form = parsed_word.inflect({'plur', 'gent'}).word  # множественное число, родительный падеж
+
+    return form
 
 
 @bot.message_handler(commands=["stats"], chat_types=["supergroup"])
@@ -658,8 +663,8 @@ def show_group_statistics(message):
     mafia_wins = group_stats.get("mafia_wins")
     citizen_wins = group_stats.get("citizens_wins")
 
-    citizen_word_form = process_counts(citizen_wins)
-    mafia_word_form = process_counts(mafia_wins)
+    citizen_word_form = decline_word_by_number(citizen_wins, "раз")
+    mafia_word_form = decline_word_by_number(mafia_wins, "раз")
 
     text = (f"<b>СТАТИСТИКА ГРУППЫ:</b>\n\n"
             f"<b>Мирные жители</b> не дали себя в обиду ровно <b>{citizen_wins} {citizen_word_form}</b>.\n\n"
@@ -676,8 +681,8 @@ def show_user_statistics(message):
     wins = group_stats.get("wins")
     loses = group_stats.get("loses")
 
-    wins_word_form = process_counts(wins)
-    loses_word_form = process_counts(loses)
+    wins_word_form = decline_word_by_number(wins, "раз")
+    loses_word_form = decline_word_by_number(loses, "раз")
 
     text = (f"<b>СТАТИСТИКА ИГРОКА:</b>\n\n"
             f"Вы прекрасно отыграли свою роль ровно <b>{wins} {wins_word_form}</b>.\n\n"
