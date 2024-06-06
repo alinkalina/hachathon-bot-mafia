@@ -340,7 +340,7 @@ def insert_into_choices_history(user_chat_id: int, group_chat_id: int, chosen_ch
     change_db(sql)
 
 
-def get_statistics(chat_id: int, table_name: str) -> dict[str, int]:
+def get_statistics(chat_id: int, table_name: str) -> dict[str, int] | None:
     if table_name == 'users':
         columns = ['wins', 'loses', 'chat_id']
 
@@ -350,7 +350,10 @@ def get_statistics(chat_id: int, table_name: str) -> dict[str, int]:
     sql = f'SELECT {columns[0]}, {columns[1]} FROM {table_name} WHERE {columns[2]} = {chat_id};'
     result = get_from_db(sql)
 
-    return {columns[0]: result[0][0], columns[1]: result[0][1]}
+    if result:
+        return {columns[0]: result[0][0], columns[1]: result[0][1]}
+
+    return None
 
 
 def change_statistics(chat_id: int, result: str):

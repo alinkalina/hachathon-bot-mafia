@@ -660,15 +660,20 @@ def show_group_statistics(message):
     group_chat_id = message.chat.id
 
     group_stats = get_statistics(group_chat_id, "groups")
-    mafia_wins = group_stats.get("mafia_wins")
-    citizen_wins = group_stats.get("citizens_wins")
 
-    citizen_word_form = decline_word_by_number(citizen_wins, "раз")
-    mafia_word_form = decline_word_by_number(mafia_wins, "раз")
+    if group_stats:
+        mafia_wins = group_stats.get("mafia_wins")
+        citizen_wins = group_stats.get("citizens_wins")
 
-    text = (f"<b>СТАТИСТИКА ГРУППЫ:</b>\n\n"
-            f"<b>Мирные жители</b> не дали себя в обиду ровно <b>{citizen_wins} {citizen_word_form}</b>.\n\n"
-            f"<b>Мафия</b> настигла мирных жителей ровно <b>{mafia_wins} {mafia_word_form}</b>.")
+        citizen_word_form = decline_word_by_number(citizen_wins, "раз")
+        mafia_word_form = decline_word_by_number(mafia_wins, "раз")
+
+        text = (f"<b>СТАТИСТИКА ГРУППЫ:</b>\n\n"
+                f"<b>Мирные жители</b> не дали себя в обиду ровно <b>{citizen_wins} {citizen_word_form}</b>.\n\n"
+                f"<b>Мафия</b> настигла мирных жителей ровно <b>{mafia_wins} {mafia_word_form}</b>.")
+
+    else:
+        text = "В вашей группе пока не было никакой активности."
 
     bot.send_message(group_chat_id, text, parse_mode='HTML')
 
@@ -677,16 +682,21 @@ def show_group_statistics(message):
 def show_user_statistics(message):
     user_id = message.chat.id
 
-    group_stats = get_statistics(user_id, "users")
-    wins = group_stats.get("wins")
-    loses = group_stats.get("loses")
+    users_stats = get_statistics(user_id, "users")
 
-    wins_word_form = decline_word_by_number(wins, "раз")
-    loses_word_form = decline_word_by_number(loses, "раз")
+    if users_stats:
+        wins = users_stats.get("wins")
+        loses = users_stats.get("loses")
 
-    text = (f"<b>СТАТИСТИКА ИГРОКА:</b>\n\n"
-            f"Вы прекрасно отыграли свою роль ровно <b>{wins} {wins_word_form}</b>.\n\n"
-            f"Удача отвернулась от вас ровно <b>{loses} {loses_word_form}</b>.")
+        wins_word_form = decline_word_by_number(wins, "раз")
+        loses_word_form = decline_word_by_number(loses, "раз")
+
+        text = (f"<b>СТАТИСТИКА ИГРОКА:</b>\n\n"
+                f"Вы прекрасно отыграли свою роль ровно <b>{wins} {wins_word_form}</b>.\n\n"
+                f"Удача отвернулась от вас ровно <b>{loses} {loses_word_form}</b>.")
+
+    else:
+        text = "В мафию здесь пока никто не играл. Статистики пока нет."
 
     bot.send_message(user_id, text, parse_mode='HTML')
 
